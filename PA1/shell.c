@@ -247,13 +247,67 @@ int shellExecuteInput(char **args)
   /** TASK 3 **/
 
   // 1. Check if args[0] is NULL. If it is, an empty command is entered, return 1
+  if (args[0] == NULL)
+  {
+    return 1;
+  }
   // 2. Otherwise, check if args[0] is in any of our builtin_commands, and that it is NOT cd, help, exit, or usage.
+  else
+  {
+    int i;
+    pid_t cpid, w;
+    int status;
+    for (i = 0; i < sizeof(builtin_commands) / sizeof(builtin_commands[0]); i++)
+    {
+      if (strcmp(builtin_commands[i], args[0]) == 0)
+      {
+        if (i <= 3) // cd, help, exit or usage is called
+        {
+          return builtin_commandFunc[i](args);
+        }
+        else // a child process is needed
+        {
+          // create a child
+          cpid = fork();
+          if (cpid == -1)
+          {
+            // fork failed, no child process is created
+            // printf("fork failed, no child process is created\n");
+            return EXIT_FAILURE;
+          }
+          else if (cpid == 0)
+          {
+            // executed by child process
+            printf("Child: my PID is %ld\n", (long)getpid());
+            // call builtin command
+            return builtin_commandFunc[i](args);
+          }
+          else
+          {
+            // executed by parent process
+            printf("Parent: my child's PID is %d\n", cpid);
+            // wait for child process to complete
+            waitpid(cpid, &status, WUNTRACED);
+            int exit_status = 0;
+            // if child terminates properly, WIFEXITED(status) returns TRUE
+            if (WIFEXITED(status))
+            {
+              exit_status = WEXITSTATUS(status);
+            }
+
+            return exit_status;
+          }
+        }
+        break;
+      }
+    }
+  }
   // 3. If conditions in (2) are satisfied, perform fork(). Check if fork() is successful.
   // 4. For the child process, execute the appropriate functions depending on the command in args[0]. Pass char ** args to the function.
   // 5. For the parent process, wait for the child process to complete and fetch the child's return value.
   // 6. Return the child's return value to the caller of shellExecuteInput
   // 7. If args[0] is not in builtin_command, print out an error message to tell the user that command doesn't exist and return 1
-
+  printf("Command '%s' not found.\n", args[0]);
   return 1;
 }
 
@@ -352,6 +406,9 @@ int main(int argc, char **argv)
   char **args = shellTokenizeInput(line);
   printf("The first token is %s \n", args[0]);
   printf("The second token is %s \n", args[1]);
+
+  // check task 3
+  shellExecuteInput(args);
 
   return 0;
 }
