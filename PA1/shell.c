@@ -9,13 +9,22 @@ int shellFind(char **args)
   printf("shellFind is called!\n");
 
   /** TASK 4 **/
+  int return_status = 0;
   // 1. Execute the binary program 'find' in shellPrograms using execvp system call
+  // int execvp(const char *file, char *const argv[]);
+  // return_status = execvp("./shellPrograms/find", args);
+  system("pwd");
+  return_status = execvp("./shellPrograms/find", args);
   // 2. Check if execvp is successful by checking its return value
   // 3. A successful execvp never returns, while a failed execvp returns -1
-  // 4. Print some kind of error message if it returns -1
-  // 5. return 1 to the caller of shellFind if execvp fails to allow loop to continue
-
-  return 1;
+  if (return_status == -1)
+  {
+    // 4. Print some kind of error message if it returns -1
+    printf("Error occured while executing find.");
+    // 5. return 1 to the caller of shellFind if execvp fails to allow loop to continue
+    return EXIT_FAILURE;
+  }
+  return EXIT_SUCCESS;
 }
 
 /**
@@ -31,8 +40,14 @@ int shellDisplayFile(char **args)
   // 3. A successful execvp never returns, while a failed execvp returns -1
   // 4. Print some kind of error message if it returns -1
   // 5. return 1 to the caller of shellDisplayFile if execvp fails to allow loop to continue
-
-  return 1;
+  int return_status = 0;
+  return_status = execvp("./shellPrograms/display", args);
+  if (return_status == -1)
+  {
+    printf("Error occured while executing display.");
+    return EXIT_FAILURE;
+  }
+  return EXIT_SUCCESS;
 }
 
 /*
@@ -49,8 +64,14 @@ int shellListDirAll(char **args)
   // 3. A successful execvp never returns, while a failed execvp returns -1
   // 4. Print some kind of error message if it returns -1
   // 5. return 1 to the caller of shellListDirAll if execvp fails to allow loop to continue
-
-  return 1;
+  int return_status = 0;
+  return_status = execvp("./shellPrograms/listdirall", args);
+  if (return_status == -1)
+  {
+    printf("Error occured while executing listdirall.");
+    return EXIT_FAILURE;
+  }
+  return EXIT_SUCCESS;
 }
 
 /*
@@ -66,8 +87,14 @@ int shellListDir(char **args)
   // 3. A successful execvp never returns, while a failed execvp returns -1
   // 4. Print some kind of error message if it returns -1
   // 5. return 1 to the caller of shellListDir
-
-  return 1;
+  int return_status = 0;
+  return_status = execvp("./shellPrograms/listdir", args);
+  if (return_status == -1)
+  {
+    printf("Error occured while executing listdir.");
+    return EXIT_FAILURE;
+  }
+  return EXIT_SUCCESS;
 }
 
 /**
@@ -84,8 +111,14 @@ int shellCountLine(char **args)
   // 3. A successful execvp never returns, while a failed execvp returns -1
   // 4. Print some kind of error message if it returns -1
   // 5. return 1 to the caller of shellCountLine if execvp fails to allow loop to continue
-
-  return 1;
+  int return_status = 0;
+  return_status = execvp("./shellPrograms/countline", args);
+  if (return_status == -1)
+  {
+    printf("Error occured while executing countline.");
+    return EXIT_FAILURE;
+  }
+  return EXIT_SUCCESS;
 }
 
 /**
@@ -101,8 +134,14 @@ int shellSummond(char **args)
   // 3. A successful execvp never returns, while a failed execvp returns -1
   // 4. Print some kind of error message if it returns -1
   // 5. return 1 to the caller of shellDaemonize if execvp fails to allow loop to continue
-
-  return 1;
+  int return_status = 0;
+  return_status = execvp("./shellPrograms/summond", args);
+  if (return_status == -1)
+  {
+    printf("Error occured while executing summond.");
+    return EXIT_FAILURE;
+  }
+  return EXIT_SUCCESS;
 }
 
 /**
@@ -119,7 +158,14 @@ int shellCheckDaemon(char **args)
   // 3. A successful execvp never returns, while a failed execvp returns -1
   // 4. Print some kind of error message if it returns -1
   // 5. return 1 to the caller of shellCheckDaemon if execvp fails to allow loop to continue
-
+  int return_status = 0;
+  return_status = execvp("./shellPrograms/checkdaemon", args);
+  if (return_status == -1)
+  {
+    printf("Error occured while executing checkdaemon.");
+    return EXIT_FAILURE;
+  }
+  return EXIT_SUCCESS;
   return 1;
 }
 
@@ -259,6 +305,7 @@ int shellExecuteInput(char **args)
     int status;
     for (i = 0; i < sizeof(builtin_commands) / sizeof(builtin_commands[0]); i++)
     {
+      // 3. If conditions in (2) are satisfied, perform fork(). Check if fork() is successful.
       if (strcmp(builtin_commands[i], args[0]) == 0)
       {
         if (i <= 3) // cd, help, exit or usage is called
@@ -275,6 +322,7 @@ int shellExecuteInput(char **args)
             // printf("fork failed, no child process is created\n");
             return EXIT_FAILURE;
           }
+          // 4. For the child process, execute the appropriate functions depending on the command in args[0]. Pass char ** args to the function.
           else if (cpid == 0)
           {
             // executed by child process
@@ -282,6 +330,7 @@ int shellExecuteInput(char **args)
             // call builtin command
             return builtin_commandFunc[i](args);
           }
+          // 5. For the parent process, wait for the child process to complete and fetch the child's return value.
           else
           {
             // executed by parent process
@@ -294,7 +343,7 @@ int shellExecuteInput(char **args)
             {
               exit_status = WEXITSTATUS(status);
             }
-
+            // 6. Return the child's return value to the caller of shellExecuteInput
             return exit_status;
           }
         }
@@ -302,10 +351,7 @@ int shellExecuteInput(char **args)
       }
     }
   }
-  // 3. If conditions in (2) are satisfied, perform fork(). Check if fork() is successful.
-  // 4. For the child process, execute the appropriate functions depending on the command in args[0]. Pass char ** args to the function.
-  // 5. For the parent process, wait for the child process to complete and fetch the child's return value.
-  // 6. Return the child's return value to the caller of shellExecuteInput
+
   // 7. If args[0] is not in builtin_command, print out an error message to tell the user that command doesn't exist and return 1
   printf("Command '%s' not found.\n", args[0]);
   return 1;
