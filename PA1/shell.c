@@ -288,11 +288,27 @@ char **shellTokenizeInput(char *line)
 
   /** TASK 2 **/
   // 1. Allocate a memory space to contain pointers (addresses) to the first character of each word in *line. Malloc should return char** that persists after the function terminates.
+  char **token_positions = malloc(sizeof(char *) * 8);
   // 2. Check that char ** that is returend by malloc is not NULL
+  if (token_positions != NULL)
+  {
+    char *token = strtok(line, SHELL_INPUT_DELIM);
+    int index = 0;
+    token_positions[index] = token;
+    index++;
+    while (token != NULL)
+    {
+      // Tokenize the rest of the command
+      token = strtok(NULL, " ");      // continue finding the next token
+      token_positions[index] = token; // store the position
+      index++;
+    }
+    token_positions[index] = NULL;
+  }
   // 3. Tokenize the *line using strtok() function
   // 4. Return the char **
 
-  return NULL;
+  return token_positions;
 }
 
 /**
@@ -331,6 +347,11 @@ int main(int argc, char **argv)
   // check task 1
   char *line = shellReadLine();
   printf("The fetched line is : %s \n", line);
+
+  // check task 2
+  char **args = shellTokenizeInput(line);
+  printf("The first token is %s \n", args[0]);
+  printf("The second token is %s \n", args[1]);
 
   return 0;
 }
