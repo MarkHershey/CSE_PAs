@@ -11,6 +11,8 @@ int shellCheckDaemon_code()
 
    // TODO: Execute the command using system(command) and check its return value
 
+   system(command);
+
    free(command);
 
    int live_daemons = 0;
@@ -21,6 +23,12 @@ int shellCheckDaemon_code()
    // 4. Close the file
    // 5. print your result
 
+   FILE* f = fopen("output.txt", "r");
+   size_t len = 0;
+   char* line = NULL;
+   while(getline(&line, &len, f) != -1) ++live_daemons;
+   fclose(f);
+
    if (live_daemons == 0)
       printf("No daemon is alive right now\n");
    else
@@ -29,7 +37,7 @@ int shellCheckDaemon_code()
    }
 
 
-   // TODO: close any file pointers and free any statically allocated memory 
+   // TODO: close any file pointers and free any statically allocated memory
 
    return 1;
 }

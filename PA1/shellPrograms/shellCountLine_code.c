@@ -1,7 +1,7 @@
 #include "shellPrograms.h"
 
 /*
-Count the number of lines in a file 
+Count the number of lines in a file
 */
 int shellCountLine_code(char **args)
 {
@@ -15,6 +15,24 @@ int shellCountLine_code(char **args)
     // 6. Close the FILE*
     // 7. Print out how many lines are there in this particular filename
     // 8. Return 1, to exit program
+  if (args[1] == NULL){
+    fprintf(stderr, "Usage: %s filename\n", args[0]);
+    return 1;
+  }
+  FILE * f = fopen(args[1], "r");
+  if (f == NULL){
+    fprintf(stderr, "Can't open file\n");
+    return 1;
+  }
+  size_t l = 0;
+  char* b = NULL;
+  int i = 0;
+
+  while(getline(&b,&l,f)+1){
+    ++i;
+  }
+  printf("%d\n",i);
+
 
     return 1;
 }
