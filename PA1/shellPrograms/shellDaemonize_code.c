@@ -19,92 +19,97 @@ char *path = "/Users/dan/cseshell_log.txt";
 static int create_daemon()
 {
 
-    /* TASK 7 */
-    // Incantation on creating a daemon with fork() twice
+  /* TASK 7 */
+  // Incantation on creating a daemon with fork() twice
 
-    // 1. Fork() from the parent process
-    // 2. Close parent with exit(1)
-    // 3. On child process (this is intermediate process), call setsid() so that the child becomes session leader to lose the controlling TTY
-    // 4. Ignore SIGCHLD, SIGHUP
-    // 5. Fork() again, parent (the intermediate) process terminates
-    // 6. Child process (the daemon) set new file permissions using umask(0). Daemon's PPID at this point is 1 (the init)
-    // 7. Change working directory to root
-    // 8. Close all open file descriptors using sysconf(_SC_OPEN_MAX) and redirect fd 0,1,2 to /dev/null
-    // 9. Return to main
+  // 1. Fork() from the parent process
+  // 2. Close parent with exit(1)
+  // 3. On child process (this is intermediate process), call setsid() so that the child becomes session leader to lose the controlling TTY
+  // 4. Ignore SIGCHLD, SIGHUP
+  // 5. Fork() again, parent (the intermediate) process terminates
+  // 6. Child process (the daemon) set new file permissions using umask(0). Daemon's PPID at this point is 1 (the init)
+  // 7. Change working directory to root
+  // 8. Close all open file descriptors using sysconf(_SC_OPEN_MAX) and redirect fd 0,1,2 to /dev/null
+  // 9. Return to main
   pid_t pid = fork();
-  if(pid == -1){
+  if (pid == -1)
+  {
     return EXIT_FAILURE;
   }
-  if(pid > 0) exit(1);
+  if (pid > 0)
+    exit(1);
 
   setsid();
   signal(SIGCHLD, SIG_IGN);
   signal(SIGHUP, SIG_IGN);
 
   pid_t pid2 = fork();
-  if(pid2 == -1){
+  if (pid2 == -1)
+  {
     return EXIT_FAILURE;
   }
-  if(pid2 > 0) exit(1);
+  if (pid2 > 0)
+    exit(1);
   umask(0);
   chdir("/");
-  for(int x = sysconf(_SC_OPEN_MAX); x>=0; --x) close(x);
+  for (int x = sysconf(_SC_OPEN_MAX); x >= 0; --x)
+    close(x);
   open("/dev/null", O_RDWR);
   dup(0);
   dup(0);
 
-    return 1;
+  return 1;
 }
 
 static int daemon_work()
 {
 
-    int num = 0;
-    FILE *fptr;
+  int num = 0;
+  FILE *fptr;
 
-    //write PID of daemon in the beginning
+  //write PID of daemon in the beginning
+  fptr = fopen(path, "a");
+  if (fptr == NULL)
+  {
+    return EXIT_FAILURE;
+  }
+
+  fprintf(fptr, "%d with FD %d\n", getpid(), fileno(fptr));
+  fclose(fptr);
+
+  while (1)
+  {
+
+    //use appropriate location if you are using MacOS or Linux
+    //TODO: Change to appropriate path
     fptr = fopen(path, "a");
+
     if (fptr == NULL)
     {
-        return EXIT_FAILURE;
+      return EXIT_FAILURE;
     }
 
-    fprintf(fptr, "%d with FD %d\n", getpid(), fileno(fptr));
+    fprintf(fptr, "PID %d Daemon writing line %d to the file.  \n", getpid(), num);
+    num++;
+
     fclose(fptr);
 
-    while (1)
-    {
+    sleep(10);
 
-        //use appropriate location if you are using MacOS or Linux
-        //TODO: Change to appropriate path
-        fptr = fopen(path, "a");
+    if (num == 10)
+      break;
+  }
 
-        if (fptr == NULL)
-        {
-            return EXIT_FAILURE;
-        }
-
-        fprintf(fptr, "PID %d Daemon writing line %d to the file.  \n", getpid(), num);
-        num++;
-
-        fclose(fptr);
-
-        sleep(10);
-
-        if (num == 10)
-            break;
-    }
-
-    return EXIT_SUCCESS;
+  return EXIT_SUCCESS;
 }
 int main(int argc, char **args)
 {
-    create_daemon();
+  create_daemon();
 
-    /* Open the log file */
-    openlog("customdaemon", LOG_PID, LOG_DAEMON);
-    syslog(LOG_NOTICE, "Daemon started.");
-    closelog();
+  /* Open the log file */
+  openlog("customdaemon", LOG_PID, LOG_DAEMON);
+  syslog(LOG_NOTICE, "Daemon started.");
+  closelog();
 
-    return daemon_work();
+  return daemon_work();
 }

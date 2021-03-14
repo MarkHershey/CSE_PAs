@@ -23,10 +23,11 @@ int shellCheckDaemon_code()
    // 4. Close the file
    // 5. print your result
 
-   FILE* f = fopen("output.txt", "r");
+   FILE *f = fopen("output.txt", "r");
    size_t len = 0;
-   char* line = NULL;
-   while(getline(&line, &len, f) != -1) ++live_daemons;
+   char *line = NULL;
+   while (getline(&line, &len, f) != -1)
+      ++live_daemons;
    fclose(f);
 
    if (live_daemons == 0)
@@ -35,7 +36,6 @@ int shellCheckDaemon_code()
    {
       printf("There are in total of %d live daemons \n", live_daemons);
    }
-
 
    // TODO: close any file pointers and free any statically allocated memory
 
