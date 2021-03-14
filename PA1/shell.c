@@ -1,5 +1,13 @@
 #include "shell.h"
 
+char xp_checkdaemon[PATH_MAX];
+char xp_countline[PATH_MAX];
+char xp_display[PATH_MAX];
+char xp_find[PATH_MAX];
+char xp_listdir[PATH_MAX];
+char xp_listdirall[PATH_MAX];
+char xp_summond[PATH_MAX];
+
 /*
  List all files matching the name in args[1] under current directory and subdirectories
 */
@@ -13,7 +21,7 @@ int shellFind(char **args)
   // 1. Execute the binary program 'find' in shellPrograms using execvp system call
   // system("pwd");
   // int execvp(const char *file, char *const argv[]);
-  return_status = execvp("./shellPrograms/find", args);
+  return_status = execvp(xp_find, args);
   // 2. Check if execvp is successful by checking its return value
   // 3. A successful execvp never returns, while a failed execvp returns -1
   if (return_status == -1)
@@ -39,7 +47,7 @@ int shellDisplayFile(char **args)
   // 4. Print some kind of error message if it returns -1
   // 5. return 1 to the caller of shellDisplayFile if execvp fails to allow loop to continue
   int return_status = 0;
-  return_status = execvp("./shellPrograms/display", args);
+  return_status = execvp(xp_display, args);
   if (return_status == -1)
   {
     printf("Error occured while executing display.");
@@ -62,7 +70,7 @@ int shellListDirAll(char **args)
   // 4. Print some kind of error message if it returns -1
   // 5. return 1 to the caller of shellListDirAll if execvp fails to allow loop to continue
   int return_status = 0;
-  return_status = execvp("./shellPrograms/listdirall", args);
+  return_status = execvp(xp_listdirall, args);
   if (return_status == -1)
   {
     printf("Error occured while executing listdirall.");
@@ -84,7 +92,7 @@ int shellListDir(char **args)
   // 4. Print some kind of error message if it returns -1
   // 5. return 1 to the caller of shellListDir
   int return_status = 0;
-  return_status = execvp("./shellPrograms/listdir", args);
+  return_status = execvp(xp_listdir, args);
   if (return_status == -1)
   {
     printf("Error occured while executing listdir.");
@@ -107,7 +115,7 @@ int shellCountLine(char **args)
   // 4. Print some kind of error message if it returns -1
   // 5. return 1 to the caller of shellCountLine if execvp fails to allow loop to continue
   int return_status = 0;
-  return_status = execvp("./shellPrograms/countline", args);
+  return_status = execvp(xp_countline, args);
   if (return_status == -1)
   {
     printf("Error occured while executing countline.");
@@ -129,7 +137,7 @@ int shellSummond(char **args)
   // 4. Print some kind of error message if it returns -1
   // 5. return 1 to the caller of shellDaemonize if execvp fails to allow loop to continue
   int return_status = 0;
-  return_status = execvp("./shellPrograms/summond", args);
+  return_status = execvp(xp_summond, args);
   if (return_status == -1)
   {
     printf("Error occured while executing summond.");
@@ -152,7 +160,7 @@ int shellCheckDaemon(char **args)
   // 4. Print some kind of error message if it returns -1
   // 5. return 1 to the caller of shellCheckDaemon if execvp fails to allow loop to continue
   int return_status = 0;
-  return_status = execvp("./shellPrograms/checkdaemon", args);
+  return_status = execvp(xp_checkdaemon, args);
   if (return_status == -1)
   {
     printf("Error occured while executing checkdaemon.");
@@ -216,6 +224,13 @@ int shellExit(char **args)
 int shellUsage(char **args)
 {
   int functionIndex = -1;
+
+  // check if expected argument is supplied
+  if (args[1] == NULL)
+  {
+    fprintf(stderr, "CSEShell: expected argument to \"usage\"\n");
+    return 1;
+  }
 
   // Check if the commands exist in the command list
   for (int i = 0; i < numOfBuiltinFunctions(); i++)
@@ -428,8 +443,8 @@ void shellLoop(void)
   while (1)
   {
     // 1. print the message prompt
-    // printf("CSEShell> ");
-    printf("\nBetterWorldByDesignShell> ");
+    printf("\nCSEShell> ");
+    // printf("\nBetterWorldByDesignShell> ");
     // 2. clear the buffer and move the output to the console using fflush
     fflush(stdout);
     // 3. invoke shellReadLine() and store the output at line
@@ -453,6 +468,14 @@ void shellLoop(void)
 
 int main(int argc, char **argv)
 {
+  // Get absolute path of executables
+  realpath("shellPrograms/checkdaemon", xp_checkdaemon);
+  realpath("shellPrograms/countline", xp_countline);
+  realpath("shellPrograms/display", xp_display);
+  realpath("shellPrograms/find", xp_find);
+  realpath("shellPrograms/listdir", xp_listdir);
+  realpath("shellPrograms/listdirall", xp_listdirall);
+  realpath("shellPrograms/summond", xp_summond);
 
   printf("Shell Run successful. Running now: \n\n");
 
