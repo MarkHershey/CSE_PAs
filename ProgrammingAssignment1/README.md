@@ -1,4 +1,4 @@
-# CSE_PA1
+# PA1
 
 Programming Assignment 1 for 50.005 Computer System Engineering at SUTD
 
