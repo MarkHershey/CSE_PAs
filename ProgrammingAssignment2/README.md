@@ -8,13 +8,14 @@ Programming Assignment 2 for 50.005 Computer System Engineering at SUTD
 
 ## Receive Mode
 
-| int | packetType  |
-| :-: | :---------: |
-|  0  |  filename   |
-|  1  |    file     |
-|  2  |    nonce    |
-|  3  | session key |
-|  3  | certificate |
+| int |      packetType       |
+| :-: | :-------------------: |
+|  0  |  plain text message   |
+|  1  |       filename        |
+|  2  |         file          |
+|  3  |         nonce         |
+|  4  |      session key      |
+|  5  | CA-signed certificate |
 
 ## Collaborators
 

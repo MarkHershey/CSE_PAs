@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+# JAVA_PATH="java"
+JAVA_PATH="/usr/lib/java/jdk-14.0.2+12/bin/java"
+
+${JAVA_PATH} ServerCP1
