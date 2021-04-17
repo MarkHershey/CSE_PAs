@@ -16,6 +16,8 @@ Programming Assignment 2 for 50.005 Computer System Engineering at SUTD
 |  3  |         nonce         |
 |  4  |      session key      |
 |  5  | CA-signed certificate |
+|  6  |      public key       |
+|  7  |   encrypted message   |
 
 ## Collaborators
 

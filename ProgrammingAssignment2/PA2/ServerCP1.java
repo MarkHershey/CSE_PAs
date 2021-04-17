@@ -10,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.SecureRandom;
+import java.util.Arrays;
 import java.util.Base64;
 
 public class ServerCP1 {
@@ -21,6 +22,25 @@ public class ServerCP1 {
 		byte[] signedBytes = targetBytes;
 
 		return signedBytes;
+	}
+
+	private static byte[][] splitBytes(final byte[] data) {
+		// Curtsey of https://stackoverflow.com/a/32179121
+		final int chunkSize = 116;
+		final int length = data.length;
+		final byte[][] dest = new byte[(length + chunkSize - 1) / chunkSize][];
+		int destIndex = 0;
+		int stopIndex = 0;
+
+		for (int startIndex = 0; startIndex + chunkSize <= length; startIndex += chunkSize) {
+			stopIndex += chunkSize;
+			dest[destIndex++] = Arrays.copyOfRange(data, startIndex, stopIndex);
+		}
+
+		if (stopIndex < length)
+			dest[destIndex] = Arrays.copyOfRange(data, stopIndex, length);
+
+		return dest;
 	}
 
 	public static void sendBytes(DataOutputStream dest, int type, byte[] data) {
@@ -62,6 +82,9 @@ public class ServerCP1 {
 			toClient = new DataOutputStream(connectionSocket.getOutputStream());
 
 			while (!connectionSocket.isClosed()) {
+				if (Thread.currentThread().isInterrupted()) {
+					break;
+				}
 				int packetType = fromClient.readInt();
 
 				if (packetType == 0) {
@@ -92,13 +115,29 @@ public class ServerCP1 {
 						sendBytes(toClient, 3, signedNonce);
 
 					}
+				} else if (packetType == 7) {
+					// Receiving a message
+					int numBytes = fromClient.readInt();
+					byte[] messageBuffer = new byte[numBytes];
+					fromClient.readFully(messageBuffer, 0, numBytes);
+					// decrypt message
+					// TODO
+					String msgReceived = new String(messageBuffer, StandardCharsets.UTF_8);
+
+					if (msgReceived.equals("Close Session")) {
+						fromClient.close();
+						toClient.close();
+						connectionSocket.close();
+					}
+
 				}
 
-				fromClient.close();
-				toClient.close();
-				connectionSocket.close();
-
 			}
+
+			// close connection
+			fromClient.close();
+			toClient.close();
+			connectionSocket.close();
 
 			// while (!connectionSocket.isClosed()) {
 
