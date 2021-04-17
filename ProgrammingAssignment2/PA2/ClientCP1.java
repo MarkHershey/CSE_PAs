@@ -4,7 +4,7 @@ import java.io.DataOutputStream;
 import java.io.FileInputStream;
 import java.net.Socket;
 
-public class ClientWithoutSecurity {
+public class ClientCP1 {
 
 	public static void main(String[] args) {
 
@@ -40,6 +40,28 @@ public class ClientWithoutSecurity {
 			clientSocket = new Socket(serverAddress, port);
 			toServer = new DataOutputStream(clientSocket.getOutputStream());
 			fromServer = new DataInputStream(clientSocket.getInputStream());
+
+			// 1. Say Hi to server
+
+			// 2. Get server's CA certificate
+
+			// 3. Get server's nonce
+
+			// 4. Sign and send nonce back
+
+			// 5. Get server's OK
+
+			// 6. Tell server to start session
+
+			// 7. While-loop: Ask user input for file name or close session
+
+			// 8. Send file
+
+			// loop back
+
+			// 9. Tell server to close the session
+
+			// 10. Confirm session closed.
 
 			System.out.println("Sending file...");
 

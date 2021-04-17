@@ -5,7 +5,7 @@ import java.io.FileOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 
-public class ServerWithoutSecurity {
+public class ServerCP1 {
 
 	public static void main(String[] args) {
 
