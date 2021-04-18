@@ -13,6 +13,7 @@ import java.security.KeyPairGenerator;
 import java.security.MessageDigest;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.SecureRandom;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.Arrays;
@@ -24,8 +25,8 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.security.auth.x500.X500Principal;
 
 public class ClientCP1 {
-	private static int rsaKeyLength = 1024;
-	private static int rsaBatchLimit = rsaKeyLength / 8 - 11;;
+	private static final int rsaKeyLength = 1024;
+	private static final int rsaBatchLimit = rsaKeyLength / 8 - 11;
 	private static final String cipherAsymmetricAlgo = "RSA/ECB/PKCS1Padding";
 	private static final String cipherSymmetricAlgo = "AES/ECB/PKCS5Padding";
 	private static PublicKey caPublicKey;
@@ -84,6 +85,14 @@ public class ClientCP1 {
 		return concatBytes(batchedData);
 	}
 
+	private static byte[] decryptBytesWithServerPubKey(byte[] data) throws Exception {
+		byte[][] batchedData = splitBytes(data, 128);
+		for (int i = 0; i < batchedData.length; i++) {
+			batchedData[i] = ClientCP1.serverDecryptCipher.doFinal(batchedData[i]);
+		}
+		return concatBytes(batchedData);
+	}
+
 	private static byte[] concatBytes(byte[][] data) throws IOException {
 		ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
 		for (byte[] batch : data) {
@@ -93,8 +102,11 @@ public class ClientCP1 {
 	}
 
 	private static byte[][] splitBytes(final byte[] data) {
+		return splitBytes(data, rsaBatchLimit);
+	}
+
+	private static byte[][] splitBytes(final byte[] data, final int chunkSize) {
 		// Curtsey of https://stackoverflow.com/a/32179121
-		final int chunkSize = rsaBatchLimit;
 		final int length = data.length;
 		final byte[][] dest = new byte[(length + chunkSize - 1) / chunkSize][];
 		int destIndex = 0;
@@ -112,16 +124,6 @@ public class ClientCP1 {
 	}
 
 	private static void sendBytes(DataOutputStream dest, int type, byte[] data) {
-		// try {
-		// dest.writeInt(type);
-		// dest.writeInt(data.length);
-		// byte[][] batchedData = splitBytes(data);
-		// for (byte[] batch : batchedData) {
-		// dest.write(batch);
-		// }
-		// } catch (IOException e) {
-		// e.printStackTrace();
-		// }
 		try {
 			dest.writeInt(type);
 			dest.writeInt(data.length);
@@ -147,6 +149,15 @@ public class ClientCP1 {
 
 	private static void sendPlainTextMessage(DataOutputStream dest, String message) {
 		sendBytes(dest, 0, message.getBytes());
+	}
+
+	private static void sendSignedTextMessage(DataOutputStream dest, String message) {
+		try {
+			byte[] signedMsg = signBytesWithMyPrivateKey(message.getBytes());
+			sendBytes(dest, 7, signedMsg);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 
 	private static void getPublicKeyFromCertByte(byte[] certBytes) throws Exception {
@@ -176,8 +187,37 @@ public class ClientCP1 {
 		serverEncryptCipher.init(Cipher.ENCRYPT_MODE, serverPublicKey);
 	}
 
-	public static void main(String[] args) {
+	private static void printBytes(byte[] data, String name) {
+		String dataString = Base64.getEncoder().encodeToString(data);
+		System.out.println(name + ": " + dataString);
+		System.out.println("---------------------------------");
+	}
 
+	// public static void testEncrypt() {
+	// try {
+	// initMyKeys();
+	// } catch (Exception e1) {
+	// e1.printStackTrace();
+	// }
+	// SecureRandom random = new SecureRandom();
+	// byte[] nonce = new byte[10];
+	// random.nextBytes(nonce);
+	// try {
+	// byte[] tmp = signBytesWithMyPrivateKey(nonce);
+	// if (tmp.length == nonce.length) {
+	// System.out.println("OKOKOOK");
+	// } else {
+	// System.out.println("nonce: " + nonce.length);
+	// System.out.println("tmp: " + tmp.length);
+	// }
+	// } catch (Exception e) {
+	// e.printStackTrace();
+	// }
+	// throw new RuntimeException("fsf");
+	// }
+
+	public static void main(String[] args) {
+		// testEncrypt();
 		String filename = "100.txt";
 		if (args.length > 0)
 			filename = args[0];
@@ -232,18 +272,24 @@ public class ClientCP1 {
 			// 3. Get server's nonce
 			System.out.println("Receiving server-genereated nonce...");
 			byte[] nonceBytes = receiveBytes(fromServer, 3);
-			String nonceString = Base64.getEncoder().encodeToString(nonceBytes);
+			byte[] decryptedNonceBytes = decryptBytesWithServerPubKey(nonceBytes);
+			String nonceString = Base64.getEncoder().encodeToString(decryptedNonceBytes);
 			System.out.println("Decoded nonce: " + nonceString);
 
-			// 4.1 Sign and send nonce back
-			byte[] signedNonce = signBytesWithMyPrivateKey(nonceBytes);
-			signedNonce = signBytesWithServerPubKey(signedNonce);
-			System.out.println("signedNonce Length: " + signedNonce.length);
-			sendBytes(toServer, 3, signedNonce);
-
-			// 4.2 send my public key to server
+			// 4.1 send my public key to server
+			System.out.println("Sending client's public key to server...");
+			printBytes(myPublicKey.getEncoded(), "myPublicKey");
 			byte[] encryptedPubKey = signBytesWithServerPubKey(myPublicKey.getEncoded());
 			sendBytes(toServer, 6, encryptedPubKey);
+
+			// 4.2 Sign and send nonce back
+			System.out.println("Sending back signed nonce...");
+			byte[] signedNonce = signBytesWithMyPrivateKey(nonceBytes);
+			printBytes(signedNonce, "DEBUG: nonce signed once");
+			signedNonce = signBytesWithServerPubKey(signedNonce);
+			System.out.println("signedNonce Length: " + signedNonce.length);
+			printBytes(signedNonce, "DEBUG: Sending signed nonce");
+			sendBytes(toServer, 3, signedNonce);
 
 			// 5. Get server's OK
 
@@ -256,6 +302,8 @@ public class ClientCP1 {
 			// loop back
 
 			// 9. Tell server to close the session
+			System.out.println("Tell server to close the session...");
+			sendSignedTextMessage(toServer, "Close Session");
 
 			// 10. Confirm session closed.
 
