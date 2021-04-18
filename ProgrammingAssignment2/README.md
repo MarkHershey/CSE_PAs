@@ -8,7 +8,7 @@ Programming Assignment 2 for 50.005 Computer System Engineering at SUTD
 
 ## Packet Type
 
-| packetType (`int`) | Ref Name       | Packet Description     |
+| packetType (`int`) | Ref Name       | Payload Description    |
 | :----------------: | :------------- | :--------------------- |
 |        `0`         | `plainMsg`     | plain text message     |
 |        `1`         | `encryptedMsg` | encrypted text message |
@@ -21,9 +21,9 @@ Programming Assignment 2 for 50.005 Computer System Engineering at SUTD
 
 ## Packet Schema
 
-| packetType (`int`) | signed digest | payloadSize (`int`) | encrypted payload |
-| :----------------: | :-----------: | :-----------------: | :---------------: |
-|      4 Bytes       |   128 Bytes   |       4 Bytes       |      X Bytes      |
+|        | packetType (`int`) | signed digest | payloadSize (`int`) |     Payload     |
+| ------ | :----------------: | :-----------: | :-----------------: | :-------------: |
+| length |      4 Bytes       |   128 Bytes   |       4 Bytes       | variable length |
 
 ## Collaborators
 
