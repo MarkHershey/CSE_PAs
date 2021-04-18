@@ -256,9 +256,7 @@ public class ServerCP1 {
 					int numBytes = fromClient.readInt();
 					byte[] buffer = new byte[numBytes];
 					fromClient.readFully(buffer, 0, numBytes);
-					printBytes(buffer, "DEBUG: Received signed nonce");
 					byte[] decryptedBytes = decryptBytesWithMyPrivateKey(buffer);
-					printBytes(decryptedBytes, "DEBUG: nonce decrypted once");
 					byte[] decryptedNonce = decryptBytesWithClientPubKey(decryptedBytes);
 					if (Arrays.equals(decryptedNonce, nonce)) {
 						System.out.println("Nonce verified!");

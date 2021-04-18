@@ -284,10 +284,8 @@ public class ClientCP1 {
 
 			// 4.2 Sign and send nonce back
 			System.out.println("Sending back signed nonce...");
-			byte[] signedNonce = signBytesWithMyPrivateKey(nonceBytes);
-			printBytes(signedNonce, "DEBUG: nonce signed once");
+			byte[] signedNonce = signBytesWithMyPrivateKey(decryptedNonceBytes);
 			signedNonce = signBytesWithServerPubKey(signedNonce);
-			System.out.println("signedNonce Length: " + signedNonce.length);
 			printBytes(signedNonce, "DEBUG: Sending signed nonce");
 			sendBytes(toServer, 3, signedNonce);
 
