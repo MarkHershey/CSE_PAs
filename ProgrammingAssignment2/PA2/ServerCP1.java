@@ -17,20 +17,15 @@ import java.security.SecureRandom;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Arrays;
-import java.util.Base64;
 
 import javax.crypto.Cipher;
 
 public class ServerCP1 {
-	private static final int rsaKeyLength = 1024;
-	private static final int rsaBatchLimit = rsaKeyLength / 8 - 11;
-	private static final int nonceSize = 64;
 	private static byte[] nonce;
 	private static final Path serverCertPath = Paths.get("server_res/server_cert.crt");
 	private static final Path publicKeyPath = Paths.get("server_res/public_key.der");
 	private static final Path privateKeyPath = Paths.get("server_res/private_key.der");
-	private static final String cipherAsymmetricAlgo = "RSA/ECB/PKCS1Padding";
-	private static final String cipherSymmetricAlgo = "AES/ECB/PKCS5Padding";
+
 	private static PublicKey clientPublicKey;
 	private static PublicKey myPublicKey;
 	private static PrivateKey myPrivateKey;
@@ -38,6 +33,37 @@ public class ServerCP1 {
 	private static Cipher myPubDecryptCipher;
 	private static Cipher myPriDecryptCipher;
 	private static Cipher clientDecryptCipher;
+
+	private static ServerSocket welcomeSocket;
+	private static Socket connectionSocket;
+	private static DataOutputStream toClient;
+	private static DataInputStream fromClient;
+
+	private static void initSocket(int port) throws Exception {
+		System.out.println("Set up Server Socket...");
+		welcomeSocket = new ServerSocket(port);
+		connectionSocket = welcomeSocket.accept();
+		toClient = new DataOutputStream(connectionSocket.getOutputStream());
+		fromClient = new DataInputStream(connectionSocket.getInputStream());
+		System.out.println("Serve Socket initialized!");
+	}
+
+	private static void initSocket() throws Exception {
+		initSocket(4321);
+	}
+
+	private static void tearDownSocket() throws IOException {
+		System.out.println("Closing Serve Socket...");
+		if (toClient != null)
+			toClient.close();
+		if (fromClient != null)
+			fromClient.close();
+		if (connectionSocket != null && !connectionSocket.isClosed())
+			connectionSocket.close();
+		if (welcomeSocket != null && !welcomeSocket.isClosed())
+			welcomeSocket.close();
+		System.out.println("Serve Socket closed!");
+	}
 
 	private static PrivateKey getPrivateKey(Path filepath) throws Exception {
 
@@ -62,98 +88,68 @@ public class ServerCP1 {
 		myPublicKey = getPublicKey(publicKeyPath);
 		myPrivateKey = getPrivateKey(privateKeyPath);
 		// init my ENCRYPT cipher
-		myEncryptCipher = Cipher.getInstance(cipherAsymmetricAlgo);
+		myEncryptCipher = Cipher.getInstance(Proto.cipherAsymmetricAlgo);
 		myEncryptCipher.init(Cipher.ENCRYPT_MODE, myPrivateKey);
 		// init my DECRYPT cipher using public key
-		myPubDecryptCipher = Cipher.getInstance(cipherAsymmetricAlgo);
+		myPubDecryptCipher = Cipher.getInstance(Proto.cipherAsymmetricAlgo);
 		myPubDecryptCipher.init(Cipher.DECRYPT_MODE, myPublicKey);
 		// init my DECRYPT cipher using private key
-		myPriDecryptCipher = Cipher.getInstance(cipherAsymmetricAlgo);
+		myPriDecryptCipher = Cipher.getInstance(Proto.cipherAsymmetricAlgo);
 		myPriDecryptCipher.init(Cipher.DECRYPT_MODE, myPrivateKey);
 	}
 
-	private static byte[] concatBytes(byte[][] data) throws IOException {
-		ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
-		for (byte[] batch : data) {
-			byteStream.write(batch);
-		}
-		return byteStream.toByteArray();
-	}
-
 	private static byte[] signBytesWithMyPrivateKey(byte[] data) throws Exception {
-		byte[][] batchedData = splitBytes(data);
+		byte[][] batchedData = Proto.splitBytesForEncryption(data);
 		for (int i = 0; i < batchedData.length; i++) {
 			batchedData[i] = ServerCP1.myEncryptCipher.doFinal(batchedData[i]);
 		}
-		return concatBytes(batchedData);
+		return Proto.concatBytes(batchedData);
 	}
 
 	private static byte[] decryptBytesWithMyPrivateKey(byte[] data) throws Exception {
-		byte[][] batchedData = splitBytes(data, 128);
+		byte[][] batchedData = Proto.splitBytesForDecryption(data);
 		for (int i = 0; i < batchedData.length; i++) {
 			batchedData[i] = ServerCP1.myPriDecryptCipher.doFinal(batchedData[i]);
 		}
-		return concatBytes(batchedData);
+		return Proto.concatBytes(batchedData);
 	}
 
 	private static byte[] decryptBytesWithMyPubKey(byte[] data) throws Exception {
-		byte[][] batchedData = splitBytes(data, 128);
+		byte[][] batchedData = Proto.splitBytesForDecryption(data);
 		for (int i = 0; i < batchedData.length; i++) {
 			batchedData[i] = ServerCP1.myPubDecryptCipher.doFinal(batchedData[i]);
 		}
-		return concatBytes(batchedData);
+		return Proto.concatBytes(batchedData);
 	}
 
-	private static void testEncryptDecrypt() {
+	// private static void testEncryptDecrypt() {
 
-		SecureRandom random = new SecureRandom();
-		byte[] tmpRandomBytes = new byte[50];
-		random.nextBytes(tmpRandomBytes);
-		try {
-			byte[] encrypted = signBytesWithMyPrivateKey(tmpRandomBytes);
-			encrypted = signBytesWithMyPrivateKey(encrypted);
-			byte[] decrypted = decryptBytesWithMyPubKey(encrypted);
-			decrypted = decryptBytesWithMyPubKey(decrypted);
-			// printBytes(tmpRandomBytes, "before");
-			// printBytes(decrypted, "after");
-			if (Arrays.equals(tmpRandomBytes, decrypted)) {
-				System.out.println("OKKKKK");
-			} else {
-				System.out.println("NOT OK");
-			}
-		} catch (Exception e) {
-		}
-		throw new RuntimeException("fsf");
-	}
+	// SecureRandom random = new SecureRandom();
+	// byte[] tmpRandomBytes = new byte[50];
+	// random.nextBytes(tmpRandomBytes);
+	// try {
+	// byte[] encrypted = signBytesWithMyPrivateKey(tmpRandomBytes);
+	// encrypted = signBytesWithMyPrivateKey(encrypted);
+	// byte[] decrypted = decryptBytesWithMyPubKey(encrypted);
+	// decrypted = decryptBytesWithMyPubKey(decrypted);
+	// // printBytes(tmpRandomBytes, "before");
+	// // printBytes(decrypted, "after");
+	// if (Arrays.equals(tmpRandomBytes, decrypted)) {
+	// System.out.println("OKKKKK");
+	// } else {
+	// System.out.println("NOT OK");
+	// }
+	// } catch (Exception e) {
+	// }
+	// throw new RuntimeException("fsf");
+	// }
 
 	private static byte[] decryptBytesWithClientPubKey(byte[] data) throws Exception {
-		byte[][] batchedData = splitBytes(data, 128);
+		byte[][] batchedData = Proto.splitBytesForDecryption(data);
 		for (int i = 0; i < batchedData.length; i++) {
 			batchedData[i] = ServerCP1.clientDecryptCipher.doFinal(batchedData[i]);
 		}
-		return concatBytes(batchedData);
-	}
-
-	private static byte[][] splitBytes(final byte[] data) {
-		return splitBytes(data, rsaBatchLimit);
-	}
-
-	private static byte[][] splitBytes(final byte[] data, final int chunkSize) {
-		// Curtsey of https://stackoverflow.com/a/32179121
-		final int length = data.length;
-		final byte[][] dest = new byte[(length + chunkSize - 1) / chunkSize][];
-		int destIndex = 0;
-		int stopIndex = 0;
-
-		for (int startIndex = 0; startIndex + chunkSize <= length; startIndex += chunkSize) {
-			stopIndex += chunkSize;
-			dest[destIndex++] = Arrays.copyOfRange(data, startIndex, stopIndex);
-		}
-
-		if (stopIndex < length)
-			dest[destIndex] = Arrays.copyOfRange(data, stopIndex, length);
-
-		return dest;
+		return Proto.concatBytes(batchedData);
 	}
 
 	public static void sendBytes(DataOutputStream dest, int type, byte[] data) {
@@ -174,7 +170,7 @@ public class ServerCP1 {
 		try {
 			System.out.println("Sending signed text message: " + message);
 			byte[] signedMsg = signBytesWithMyPrivateKey(message.getBytes());
-			printBytes(signedMsg, "signedMsg");
+			Proto.printBytes(signedMsg, "signedMsg");
 			sendBytes(dest, 7, signedMsg);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -185,36 +181,15 @@ public class ServerCP1 {
 
 	}
 
-	private static void printBytes(byte[] data, String name) {
-		String dataString = Base64.getEncoder().encodeToString(data);
-		System.out.println(name + ": " + dataString);
-		System.out.println("---------------------------------");
-	}
-
 	public static void main(String[] args) {
 
-		int port = 4321;
-		if (args.length > 0)
-			port = Integer.parseInt(args[0]);
-
-		ServerSocket welcomeSocket = null;
-		Socket connectionSocket = null;
-		DataOutputStream toClient = null;
-		DataInputStream fromClient = null;
-
-		FileOutputStream fileOutputStream = null;
-		BufferedOutputStream bufferedFileOutputStream = null;
-
 		try {
+			initSocket();
 			initMyKeys();
-			// testEncryptDecrypt();
-			welcomeSocket = new ServerSocket(port);
-			connectionSocket = welcomeSocket.accept();
-			fromClient = new DataInputStream(connectionSocket.getInputStream());
-			toClient = new DataOutputStream(connectionSocket.getOutputStream());
 
 			while (!connectionSocket.isClosed()) {
 				if (Thread.currentThread().isInterrupted()) {
+					tearDownSocket();
 					break;
 				}
 				int packetType = fromClient.readInt();
@@ -236,9 +211,9 @@ public class ServerCP1 {
 
 						// Generate nonce
 						SecureRandom random = new SecureRandom();
-						ServerCP1.nonce = new byte[nonceSize];
+						ServerCP1.nonce = new byte[Proto.nonceLength];
 						random.nextBytes(ServerCP1.nonce);
-						printBytes(ServerCP1.nonce, "Generated nonce");
+						Proto.printBytes(ServerCP1.nonce, "Generated nonce");
 						// sign nonce
 						byte[] signedNonce = signBytesWithMyPrivateKey(ServerCP1.nonce);
 						// send signed nonce
@@ -254,11 +229,10 @@ public class ServerCP1 {
 					fromClient.readFully(buffer, 0, numBytes);
 					byte[] decryptedBytes = decryptBytesWithMyPrivateKey(buffer);
 					// init client public key
-					clientPublicKey = KeyFactory.getInstance("RSA")
-							.generatePublic(new X509EncodedKeySpec(decryptedBytes));
-					printBytes(decryptedBytes, "clientPublicKey");
+					clientPublicKey = Proto.recoverPubKeyFromBytes(decryptedBytes);
+					Proto.printBytes(decryptedBytes, "clientPublicKey");
 					// init client DECRYPT cipher using client's public key
-					clientDecryptCipher = Cipher.getInstance(cipherAsymmetricAlgo);
+					clientDecryptCipher = Cipher.getInstance(Proto.cipherAsymmetricAlgo);
 					clientDecryptCipher.init(Cipher.DECRYPT_MODE, clientPublicKey);
 					System.out.println("Client's public key has been initialized.");
 
@@ -274,15 +248,12 @@ public class ServerCP1 {
 						sendSignedTextMessage(toClient, "OK");
 					} else {
 						// nonce does not match
-						printBytes(decryptedNonce, "DEBUG: Illegal nonce");
-						printBytes(nonce, "DEBUG: Actual nonce");
+						Proto.printBytes(decryptedNonce, "DEBUG: Illegal nonce");
+						Proto.printBytes(nonce, "DEBUG: Actual nonce");
 						// terminate communication
 						sendSignedTextMessage(toClient, "Failed");
-						System.err.println("Terminating session due to nonce mismatch.");
-						fromClient.close();
-						toClient.close();
-						connectionSocket.close();
-						System.out.println("Session closed.");
+						System.err.println("Terminating session due to nonce mismatch...");
+						tearDownSocket();
 					}
 
 				} else if (packetType == 7) {
@@ -301,10 +272,7 @@ public class ServerCP1 {
 						System.out.println("Session Started...");
 					} else if (msgReceived.equals("Close Session")) {
 						System.out.println("Received a request from client to close the session...");
-						fromClient.close();
-						toClient.close();
-						connectionSocket.close();
-						System.out.println("Session closed.");
+						tearDownSocket();
 					} else {
 						System.out.println(msgReceived);
 					}

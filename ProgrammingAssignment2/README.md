@@ -6,18 +6,24 @@ Programming Assignment 2 for 50.005 Computer System Engineering at SUTD
 
 -   PA2 briefing: https://docs.google.com/document/d/13ejwUagzpAMuWI91-uwWF1TswoJVLGW3Gd9i6Vq9IWs/edit
 
-## Receive Mode
+## Packet Type
 
-| int |      packetType       |
-| :-: | :-------------------: |
-|  0  |  plain text message   |
-|  1  |       filename        |
-|  2  |         file          |
-|  3  |         nonce         |
-|  4  |      session key      |
-|  5  | CA-signed certificate |
-|  6  |      public key       |
-|  7  |   encrypted message   |
+| packetType (`int`) | Ref Name       | Packet Description     |
+| :----------------: | :------------- | :--------------------- |
+|        `0`         | `plainMsg`     | plain text message     |
+|        `1`         | `encryptedMsg` | encrypted text message |
+|        `2`         | `filename`     | encrypted filename     |
+|        `3`         | `file`         | encrypted file content |
+|        `99`        | `cert`         | CA-signed certificate  |
+|        `98`        | `nonce`        | nonce                  |
+|        `97`        | `pubKey`       | public key             |
+|        `96`        | `sessionKey`   | encrypted session key  |
+
+## Packet Schema
+
+| packetType (`int`) | signed digest | payloadSize (`int`) | encrypted payload |
+| :----------------: | :-----------: | :-----------------: | :---------------: |
+|      4 Bytes       |   128 Bytes   |       4 Bytes       |      X Bytes      |
 
 ## Collaborators
 
