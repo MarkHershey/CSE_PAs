@@ -3,10 +3,12 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -18,6 +20,7 @@ import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.Scanner;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -160,6 +163,13 @@ public class ClientCP1 {
 		}
 	}
 
+	private static String receiveSignedMsgFromServer(DataInputStream src) throws Exception {
+		byte[] bytesRecieved = receiveBytes(src, 7);
+		byte[] decryptBytes = decryptBytesWithServerPubKey(bytesRecieved);
+		String msgReceived = new String(decryptBytes, StandardCharsets.UTF_8);
+		return msgReceived;
+	}
+
 	private static void getPublicKeyFromCertByte(byte[] certBytes) throws Exception {
 		System.out.println("Checking certificate...");
 		// get Server's certificate
@@ -251,6 +261,8 @@ public class ClientCP1 {
 
 		try {
 
+			byte[] bytesRecieved;
+
 			System.out.println("Establishing connection to server...");
 
 			// Connect to server and get the input and output streams
@@ -264,17 +276,16 @@ public class ClientCP1 {
 
 			// 2. Get server's CA certificate
 			System.out.println("Receiving server's certificate...");
-			byte[] certBytes = receiveBytes(fromServer, 5);
+			bytesRecieved = receiveBytes(fromServer, 5);
 
 			System.out.println("Getting server's public key from certificate...");
-			getPublicKeyFromCertByte(certBytes);
+			getPublicKeyFromCertByte(bytesRecieved);
 
 			// 3. Get server's nonce
 			System.out.println("Receiving server-genereated nonce...");
-			byte[] nonceBytes = receiveBytes(fromServer, 3);
-			byte[] decryptedNonceBytes = decryptBytesWithServerPubKey(nonceBytes);
-			String nonceString = Base64.getEncoder().encodeToString(decryptedNonceBytes);
-			System.out.println("Decoded nonce: " + nonceString);
+			bytesRecieved = receiveBytes(fromServer, 3);
+			byte[] decryptedNonceBytes = decryptBytesWithServerPubKey(bytesRecieved);
+			printBytes(decryptedNonceBytes, "decryptedNonce");
 
 			// 4.1 send my public key to server
 			System.out.println("Sending client's public key to server...");
@@ -290,10 +301,60 @@ public class ClientCP1 {
 			sendBytes(toServer, 3, signedNonce);
 
 			// 5. Get server's OK
+			System.out.println("Receiving server confirmation...");
+			String confirmationMsg = receiveSignedMsgFromServer(fromServer);
+			if (confirmationMsg.equals("OK")) {
+				System.out.println("Authentication Handshake Complete.");
+			} else {
+				System.err.println("Authentication failed, terminating communication...");
+				System.err.println(confirmationMsg);
+				toServer.close();
+				fromServer.close();
+				clientSocket.close();
+				return;
+			}
 
 			// 6. Tell server to start session
+			System.out.println("Tell server to start a session...");
+			sendSignedTextMessage(toServer, "Start Session");
+
+			// 6.2 Confirm session has started
+			System.out.println("Receiving session confirmation...");
+			confirmationMsg = receiveSignedMsgFromServer(fromServer);
+			if (confirmationMsg.equals("Session Started")) {
+				System.out.println("Session Started");
+			} else {
+				System.err.println("Session refused, terminating communication...");
+				System.err.println(confirmationMsg);
+				toServer.close();
+				fromServer.close();
+				clientSocket.close();
+				return;
+			}
 
 			// 7. While-loop: Ask user input for file name or close session
+			Scanner myScanner = new Scanner(System.in);
+			while (true) {
+				System.out.println("Enter filename to send file:");
+				String usrInput = myScanner.nextLine();
+
+				if (usrInput.equals("quit")) {
+					break;
+				}
+
+				File file = new File(usrInput);
+				if (!file.exists()) {
+					file = new File("client_res/" + usrInput);
+					if (!file.exists()) {
+						System.out.println("File not found.");
+						continue;
+					}
+				}
+				fileInputStream = new FileInputStream(file);
+				byte[] fileBytes = new byte[(int) file.length()];
+				fileInputStream.read(fileBytes);
+			}
+			myScanner.close();
 
 			// 8. Send file
 
@@ -304,7 +365,8 @@ public class ClientCP1 {
 			sendSignedTextMessage(toServer, "Close Session");
 
 			// 10. Confirm session closed.
-
+			toServer.close();
+			fromServer.close();
 			clientSocket.close();
 
 			//////////////////////////////////////////////////////

@@ -170,6 +170,17 @@ public class ServerCP1 {
 		sendBytes(dest, 0, message.getBytes());
 	}
 
+	private static void sendSignedTextMessage(DataOutputStream dest, String message) {
+		try {
+			System.out.println("Sending signed text message: " + message);
+			byte[] signedMsg = signBytesWithMyPrivateKey(message.getBytes());
+			printBytes(signedMsg, "signedMsg");
+			sendBytes(dest, 7, signedMsg);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
 	public static void sendFile(DataOutputStream dest, String filename) {
 
 	}
@@ -260,9 +271,18 @@ public class ServerCP1 {
 					byte[] decryptedNonce = decryptBytesWithClientPubKey(decryptedBytes);
 					if (Arrays.equals(decryptedNonce, nonce)) {
 						System.out.println("Nonce verified!");
+						sendSignedTextMessage(toClient, "OK");
 					} else {
-						printBytes(decryptedNonce, "Illegal nonce");
-						printBytes(nonce, "Actual nonce");
+						// nonce does not match
+						printBytes(decryptedNonce, "DEBUG: Illegal nonce");
+						printBytes(nonce, "DEBUG: Actual nonce");
+						// terminate communication
+						sendSignedTextMessage(toClient, "Failed");
+						System.err.println("Terminating session due to nonce mismatch.");
+						fromClient.close();
+						toClient.close();
+						connectionSocket.close();
+						System.out.println("Session closed.");
 					}
 
 				} else if (packetType == 7) {
@@ -275,7 +295,11 @@ public class ServerCP1 {
 					byte[] decryptedMsg = decryptBytesWithClientPubKey(messageBuffer);
 					String msgReceived = new String(decryptedMsg, StandardCharsets.UTF_8);
 
-					if (msgReceived.equals("Close Session")) {
+					if (msgReceived.equals("Start Session")) {
+						System.out.println("Received a request from client to start a session...");
+						sendSignedTextMessage(toClient, "Session Started");
+						System.out.println("Session Started...");
+					} else if (msgReceived.equals("Close Session")) {
 						System.out.println("Received a request from client to close the session...");
 						fromClient.close();
 						toClient.close();
