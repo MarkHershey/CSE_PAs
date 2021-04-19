@@ -250,7 +250,7 @@ public class ClientCP1 {
 		File file = new File(filename);
 		assert file.exists();
 		// send filename
-		sendBytesWithProtection(Proto.pType.filename, filename.getBytes());
+		sendBytesWithProtection(Proto.pType.filename, file.getName().getBytes());
 		// get file content
 		FileInputStream fileInputStream = new FileInputStream(file);
 		byte[] fileBytes = new byte[(int) file.length()];
@@ -258,7 +258,7 @@ public class ClientCP1 {
 		// send file content
 		sendBytesWithProtection(Proto.pType.file, fileBytes);
 		fileInputStream.close();
-
+		System.out.println("File sent: " + filename);
 	}
 
 	private static String receivePlainTextMessage() throws Exception {
@@ -267,7 +267,7 @@ public class ClientCP1 {
 	}
 
 	private static String receiveEncryptedTextMessage() throws Exception {
-		byte[] bytesRecieved = receiveEncryptedBytes(Proto.pType.plainMsg);
+		byte[] bytesRecieved = receiveEncryptedBytes(Proto.pType.encryptedMsg);
 		return new String(bytesRecieved, StandardCharsets.UTF_8);
 	}
 
@@ -311,72 +311,65 @@ public class ClientCP1 {
 			byte[] encryptedPubKey = encryptBytesWithServerPubKey(myPublicKey.getEncoded());
 			sendBytes(Proto.pType.pubKey, encryptedPubKey);
 
-			// // 4.2 Sign and send nonce back
-			// System.out.println("Sending back signed nonce...");
-			// byte[] signedNonce = signBytesWithMyPrivateKey(decryptedNonceBytes);
-			// signedNonce = signBytesWithServerPubKey(signedNonce);
-			// Proto.printBytes(signedNonce, "DEBUG: Sending signed nonce");
-			// sendBytes(toServer, 3, signedNonce);
+			// 4.2 Sign and send nonce back
+			System.out.println("Sending back signed nonce...");
+			byte[] signedNonce = signBytesWithMyPrivateKey(decryptedNonceBytes);
+			signedNonce = encryptBytesWithServerPubKey(signedNonce);
+			Proto.printBytes(signedNonce, "DEBUG: Sending signed nonce");
+			sendBytes(Proto.pType.nonce, signedNonce);
 
-			// // 5. Get server's OK
-			// System.out.println("Receiving server confirmation...");
-			// String confirmationMsg = receiveSignedMsgFromServer(fromServer);
-			// if (confirmationMsg.equals("OK")) {
-			// System.out.println("Authentication Handshake Complete.");
-			// } else {
-			// System.err.println("Authentication failed, terminating communication...");
-			// System.err.println(confirmationMsg);
-			// toServer.close();
-			// fromServer.close();
-			// clientSocket.close();
-			// return;
-			// }
+			// 5. Get server's OK
+			System.out.println("Receiving server confirmation...");
+			String confirmationMsg = receiveEncryptedTextMessage();
+			if (confirmationMsg.equals("Ready")) {
+				System.out.println("Authentication Handshake Complete.");
+			} else {
+				System.err.println("Authentication failed, terminating communication...");
+				tearDownSocket();
+				return;
+			}
 
-			// // 6. Tell server to start session
-			// System.out.println("Tell server to start a session...");
-			// sendSignedTextMessage(toServer, "Start Session");
+			// 6. Tell server to start session
+			System.out.println("Tell server to start a session...");
+			sendEncryptedTextMessage("Start Session");
 
-			// // 6.2 Confirm session has started
-			// System.out.println("Receiving session confirmation...");
-			// confirmationMsg = receiveSignedMsgFromServer(fromServer);
-			// if (confirmationMsg.equals("Session Started")) {
-			// System.out.println("Session Started");
-			// } else {
-			// System.err.println("Session refused, terminating communication...");
-			// System.err.println(confirmationMsg);
-			// toServer.close();
-			// fromServer.close();
-			// clientSocket.close();
-			// return;
-			// }
+			// 6.2 Confirm session has started
+			System.out.println("Receiving session confirmation...");
+			confirmationMsg = receiveEncryptedTextMessage();
+			if (confirmationMsg.equals("Session Started")) {
+				System.out.println("Session Started");
+			} else {
+				System.err.println("Session refused, terminating communication...");
+				tearDownSocket();
+				return;
+			}
 
-			// // 7. While-loop: Ask user input for file name or close session
-			// Scanner myScanner = new Scanner(System.in);
-			// while (true) {
-			// System.out.println("Enter filename to send file:");
-			// String usrInput = myScanner.nextLine();
+			// 7.1 While-loop: Ask user input for file name or close session
+			Scanner myScanner = new Scanner(System.in);
+			while (true) {
+				System.out.println("\nEnter filename to send file (enter 'q' to quit):");
+				String usrInput = myScanner.nextLine();
 
-			// if (usrInput.equals("quit")) {
-			// break;
-			// }
+				if (usrInput.equals("q")) {
+					break;
+				}
 
-			// File file = new File(usrInput);
-			// if (!file.exists()) {
-			// file = new File("client_res/" + usrInput);
-			// if (!file.exists()) {
-			// System.out.println("File not found.");
-			// continue;
-			// }
-			// }
-			// FileInputStream fileInputStream = new FileInputStream(file);
-			// byte[] fileBytes = new byte[(int) file.length()];
-			// fileInputStream.read(fileBytes);
-			// }
-			// myScanner.close();
+				File file = new File(usrInput);
+				if (!file.exists()) {
+					file = new File("client_res/" + usrInput);
+					if (!file.exists()) {
+						System.out.println("File not found.");
+						continue;
+					}
+				}
 
-			// 8. Send file
-
-			// loop back
+				// 7.2. Send file
+				long fileTransferStarted = System.nanoTime();
+				sendFile(file.getPath());
+				long fileTransferTaken = System.nanoTime() - fileTransferStarted;
+				System.out.println("File transfer took: " + fileTransferTaken / 1000000.0 + "ms");
+			}
+			myScanner.close();
 
 			// 9. Tell server to close the session
 			System.out.println("Tell server to close the session...");

@@ -1,8 +1,5 @@
-import java.io.BufferedOutputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -27,6 +24,7 @@ public class ServerCP1 {
 	private static final Path serverCertPath = Paths.get("server_res/server_cert.crt");
 	private static final Path publicKeyPath = Paths.get("server_res/public_key.der");
 	private static final Path privateKeyPath = Paths.get("server_res/private_key.der");
+	private static final String serverStoragePathStr = "server_storage";
 	private static final Logger LOGGER = Logger.getLogger(ServerCP1.class.getName());
 
 	private static PublicKey clientPublicKey;
@@ -50,7 +48,9 @@ public class ServerCP1 {
 
 	private static void initLogger(Level level) {
 		// Ref: https://stackoverflow.com/a/34229629
-		System.setProperty("java.util.logging.SimpleFormatter.format", "%1$tF %1$tT %4$s %2$s %5$s%6$s%n");
+		// System.setProperty("java.util.logging.SimpleFormatter.format", "%1$tF %1$tT
+		// %4$s %2$s %5$s%6$s%n");
+		System.setProperty("java.util.logging.SimpleFormatter.format", "%1$tF %1$tT %4$s %5$s%6$s%n");
 		Handler handlerObj = new ConsoleHandler();
 		handlerObj.setLevel(level);
 		LOGGER.addHandler(handlerObj);
@@ -242,6 +242,17 @@ public class ServerCP1 {
 		return msg;
 	}
 
+	private static void saveFile(byte[] data, String name) throws IOException {
+
+		Path path = Paths.get(serverStoragePathStr + "/recv_" + name);
+		Files.write(path, data);
+		LOGGER.fine("File saved to: " + path.toString());
+		// FileOutputStream fileOutputStream = new FileOutputStream("recv_" + name);
+		// BufferedOutputStream bufferedFileOutputStream = new
+		// BufferedOutputStream(fileOutputStream);
+
+	}
+
 	///////////////////////////////////////////////////////////////////////////
 
 	public static void main(String[] args) {
@@ -252,17 +263,17 @@ public class ServerCP1 {
 			initMyKeys();
 
 			while (!connectionSocket.isClosed()) {
-				byte[] bytesRecieved;
 
 				if (Thread.currentThread().isInterrupted()) {
 					tearDownSocket();
 					break;
 				}
+
+				byte[] bytesRecieved;
 				int packetType = fromClient.readInt();
 
 				if (packetType == Proto.pType.plainMsg) {
 					String msgReceived = receivePlainTextMessage();
-
 					if (msgReceived.equals("Hi")) {
 						// send server's certificate
 						byte[] server_cert = Files.readAllBytes(serverCertPath);
@@ -282,14 +293,17 @@ public class ServerCP1 {
 					}
 				} else if (packetType == Proto.pType.encryptedMsg) {
 					String msgReceived = receiveEncryptedTextMessage();
-
-					if (msgReceived.equals("Close Session")) {
+					if (msgReceived.equals("Start Session")) {
+						LOGGER.fine("Received a request from client to start a session...");
+						sendEncryptedTextMessage("Session Started");
+					} else if (msgReceived.equals("Close Session")) {
 						LOGGER.fine("Received a request from client to close the session...");
 						tearDownSocket();
 						break;
 					}
+				}
 
-				} else if (packetType == Proto.pType.pubKey) {
+				else if (packetType == Proto.pType.pubKey) {
 					LOGGER.fine("Receiving public key from client...");
 					// Receiving a public key
 					bytesRecieved = receiveBytes();
@@ -303,101 +317,45 @@ public class ServerCP1 {
 					// init client DECRYPT cipher using client's public key
 					clientDecryptCipher = Cipher.getInstance(Proto.cipherAsymmetricAlgo);
 					clientDecryptCipher.init(Cipher.DECRYPT_MODE, clientPublicKey);
-					LOGGER.fine("Client's public key has been initialized.");
+					LOGGER.info("Client's public key has been initialized.");
 				}
 
-				// } else if (packetType == 3) {
-				// System.out.println("Verifying nonce...");
-				// int numBytes = fromClient.readInt();
-				// byte[] buffer = new byte[numBytes];
-				// fromClient.readFully(buffer, 0, numBytes);
-				// byte[] decryptedBytes = decryptBytesWithMyPrivateKey(buffer);
-				// byte[] decryptedNonce = decryptBytesWithClientPubKey(decryptedBytes);
-				// if (Arrays.equals(decryptedNonce, nonce)) {
-				// System.out.println("Nonce verified!");
-				// sendSignedTextMessage(toClient, "OK");
-				// } else {
-				// // nonce does not match
-				// Proto.printBytes(decryptedNonce, "DEBUG: Illegal nonce");
-				// Proto.printBytes(nonce, "DEBUG: Actual nonce");
-				// // terminate communication
-				// sendSignedTextMessage(toClient, "Failed");
-				// System.err.println("Terminating session due to nonce mismatch...");
-				// tearDownSocket();
-				// }
+				else if (packetType == Proto.pType.nonce) {
+					LOGGER.fine("Verifying nonce...");
+					bytesRecieved = receiveBytes();
+					byte[] decryptedBytes = decryptBytesWithMyPrivateKey(bytesRecieved);
+					byte[] decryptedNonce = decryptBytesWithClientPubKey(decryptedBytes);
+					if (Arrays.equals(decryptedNonce, nonce)) {
+						LOGGER.info("Nonce verified!");
+						sendEncryptedTextMessage("Ready");
+					} else {
+						// nonce does not match
+						LOGGER.fine("DEBUG: Illegal nonce: " + Proto.bytesToString(decryptedNonce));
+						LOGGER.fine("DEBUG: Actual nonce : " + Proto.bytesToString(nonce));
+						// terminate communication
+						sendEncryptedTextMessage("Failed");
+						LOGGER.severe("Terminating session due to nonce mismatch...");
+						tearDownSocket();
+						break;
+					}
+				}
 
-				// } else if (packetType == 7) {
-				// // Receiving a message
-				// System.out.println("Receiving a signed message from client...");
-				// int numBytes = fromClient.readInt();
-				// byte[] messageBuffer = new byte[numBytes];
-				// fromClient.readFully(messageBuffer, 0, numBytes);
-				// // decrypt message
-				// byte[] decryptedMsg = decryptBytesWithClientPubKey(messageBuffer);
-				// String msgReceived = new String(decryptedMsg, StandardCharsets.UTF_8);
-
-				// if (msgReceived.equals("Start Session")) {
-				// System.out.println("Received a request from client to start a session...");
-				// sendSignedTextMessage(toClient, "Session Started");
-				// System.out.println("Session Started...");
-				// } else if (msgReceived.equals("Close Session")) {
-				// System.out.println("Received a request from client to close the session...");
-				// tearDownSocket();
-				// } else {
-				// System.out.println(msgReceived);
-				// }
-
-				// }
+				else if (packetType == Proto.pType.filename) {
+					LOGGER.fine("Receiving a file...");
+					// expecting a filename
+					bytesRecieved = receiveEncryptedBytes();
+					String fileName = new String(bytesRecieved, StandardCharsets.UTF_8);
+					LOGGER.fine("Filename: " + fileName);
+					// expecting the file content
+					packetType = fromClient.readInt();
+					bytesRecieved = receiveEncryptedBytes();
+					saveFile(bytesRecieved, fileName);
+				}
 
 			}
 
-			// while (!connectionSocket.isClosed()) {
-
-			// int packetType = fromClient.readInt();
-
-			// // If the packet is for transferring the filename
-			// if (packetType == 0) {
-
-			// System.out.println("Receiving file...");
-
-			// int numBytes = fromClient.readInt();
-			// byte[] filename = new byte[numBytes];
-			// // Must use read fully!
-			// // See:
-			// //
-			// https://stackoverflow.com/questions/25897627/datainputstream-read-vs-datainputstream-readfully
-			// fromClient.readFully(filename, 0, numBytes);
-
-			// fileOutputStream = new FileOutputStream("recv_" + new String(filename, 0,
-			// numBytes));
-			// bufferedFileOutputStream = new BufferedOutputStream(fileOutputStream);
-
-			// // If the packet is for transferring a chunk of the file
-			// } else if (packetType == 1) {
-
-			// int numBytes = fromClient.readInt();
-			// byte[] block = new byte[numBytes];
-			// fromClient.readFully(block, 0, numBytes);
-
-			// if (numBytes > 0)
-			// bufferedFileOutputStream.write(block, 0, numBytes);
-
-			// if (numBytes < 117) {
-			// System.out.println("Closing connection...");
-
-			// if (bufferedFileOutputStream != null)
-			// bufferedFileOutputStream.close();
-			// if (bufferedFileOutputStream != null)
-			// fileOutputStream.close();
-			// fromClient.close();
-			// toClient.close();
-			// connectionSocket.close();
-			// }
-			// }
-
-			// }
-
 		} catch (Exception e) {
+			LOGGER.log(Level.SEVERE, e.getMessage(), e);
 			e.printStackTrace();
 		}
 
