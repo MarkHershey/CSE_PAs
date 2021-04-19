@@ -349,6 +349,8 @@ public class ServerCP1 {
 					packetType = fromClient.readInt();
 					bytesRecieved = receiveEncryptedBytes();
 					saveFile(bytesRecieved, fileName);
+					// send confirmation
+					sendEncryptedTextMessage("File Received");
 				}
 
 			}

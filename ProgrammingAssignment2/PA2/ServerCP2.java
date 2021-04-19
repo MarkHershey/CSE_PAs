@@ -436,6 +436,8 @@ public class ServerCP2 {
 					packetType = fromClient.readInt();
 					bytesRecieved = receiveEncryptedBytes();
 					saveFile(bytesRecieved, fileName);
+					// send confirmation
+					sendEncryptedTextMessage("File Received");
 				}
 
 				else if (packetType == Proto.pType.sFilename) {
@@ -448,6 +450,8 @@ public class ServerCP2 {
 					packetType = fromClient.readInt();
 					bytesRecieved = receiveSessionEncryptedBytes();
 					saveFile(bytesRecieved, fileName);
+					// send confirmation
+					sendSessionEncryptedTextMessage("File Received");
 				}
 
 			}

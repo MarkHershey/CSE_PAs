@@ -500,12 +500,30 @@ public class ClientCP2 {
 					// 7.2. Send file
 					long fileTransferStarted = System.nanoTime();
 					sendFileInSession(file.getPath());
+					// pending confirmation
+					System.out.println("Pending confirmation...");
+					confirmationMsg = receiveSessionEncryptedTextMessage();
+					if (confirmationMsg.equals("File Received")) {
+						System.out.println("Server Received");
+					} else {
+						System.err.println("Error: Server failed to receive the file.");
+						continue;
+					}
+
 					long fileTransferTaken = System.nanoTime() - fileTransferStarted;
 					System.out.println("File transfer took: " + fileTransferTaken / 1000000.0 + "ms");
 				}
 				myScanner.close();
 			} else {
 				sendFileInSession(filename);
+				// pending confirmation
+				System.out.println("Pending confirmation...");
+				confirmationMsg = receiveSessionEncryptedTextMessage();
+				if (confirmationMsg.equals("File Received")) {
+					System.out.println("Server Received");
+				} else {
+					System.err.println("Error: Server failed to receive the file.");
+				}
 			}
 
 			// 9. Tell server to close the session

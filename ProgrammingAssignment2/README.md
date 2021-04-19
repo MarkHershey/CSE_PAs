@@ -13,15 +13,24 @@ Step 1: Server's Terminal Window:
 ```bash
 $ cd PA2
 $ make
-$ java ServerCP1
+$ java ServerCP2
 ```
 
 Step 2: Client's Terminal Window:
 
-```bash
-$ cd PA2
-$ java ClientCP1
-```
+-   Interactive mode (to send multiple files)
+
+    ```bash
+    $ cd PA2
+    $ java ClientCP2
+    ```
+
+-   Command line mode (to send a single file)
+
+    ```bash
+    $ cd PA2
+    $ java ClientCP2 /path/to/your/file
+    ```
 
 ## Packet Type
 
@@ -57,3 +66,7 @@ Use session key encryption
 
 -   [Daniel Low @nexaitch](https://github.com/nexaitch)
 -   [Huang He @MarkHershey](https://github.com/MarkHershey)
+
+```
+
+```
