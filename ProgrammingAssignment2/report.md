@@ -1,27 +1,27 @@
-# Programming Assignment 2
+# ProgrammingAssignment2
 
 Programming Assignment 2 for 50.005 Computer System Engineering at SUTD
 
-<!-- -   PA2 briefing: https://docs.google.com/document/d/13ejwUagzpAMuWI91-uwWF1TswoJVLGW3Gd9i6Vq9IWs/edit -->
+-   [Daniel Low (1004372)](https://github.com/nexaitch)
+-   [Huang He (1004561)](https://github.com/MarkHershey)
 
 ---
 
-## How to run the code?
+## Vulnerabilities in the original Authentication Protocol
 
-Step 1: Server's Terminal Window:
+-   The CA-signed certificate can assure the authenticity of the server, but, the server has no information about the client. So there is a lack of a client authentication process.
+-   If we assume the server knows the client's identity through some password login process, (which is ignored in this project), the server is still exposed to replay attack, which means that any third party client could replay the client's request/ packet to exploit the server's indiscriminative request handling. **We will solve this issue by introducing the server-generated one-time verification number (NONCE). NONCE is generated and used only once per handshake, the client is expected to sign the NONCE and send it back to the server for verification, by doing this, the server is able to verify the client is live and authenticated.**
+-   Since the server's certificate is public, and the nonce is still potentially at risk of leaking to a third party, if the client only uses the server's public key for encryption, any third party could potentially pretend to be the client and send files to the server. **We will solve this issue by letting both client and the server exchange their public key securely, and any follow-up communication not only need to be encrypted using the receiver's public key, but the digest also needs to be signed by using its own private key. (CP1)**
 
-```bash
-$ cd PA2
-$ make
-$ java ServerCP1
-```
+## Protocol
 
-Step 2: Client's Terminal Window:
+### CP1
 
-```bash
-$ cd PA2
-$ java ClientCP1
-```
+![](imgs/CP1.png)
+
+### CP2
+
+![](imgs/CP2.png)
 
 ## Packet Type
 
@@ -53,7 +53,6 @@ Use session key encryption
 | ------ | :----------------: | :------: | :-----------------: | :-------------: |
 | length |      4 Bytes       | 32 Bytes |       4 Bytes       | variable length |
 
-## Collaborators
+## Performance statistics
 
--   [Daniel Low @nexaitch](https://github.com/nexaitch)
--   [Huang He @MarkHershey](https://github.com/MarkHershey)
+-   TODO
