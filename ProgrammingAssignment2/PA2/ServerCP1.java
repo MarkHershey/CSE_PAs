@@ -20,7 +20,6 @@ import java.util.logging.*;
 import javax.crypto.Cipher;
 
 public class ServerCP1 {
-	private static byte[] nonce;
 	private static final Path serverCertPath = Paths.get("server_res/server_cert.crt");
 	private static final Path publicKeyPath = Paths.get("server_res/public_key.der");
 	private static final Path privateKeyPath = Paths.get("server_res/private_key.der");
@@ -33,7 +32,6 @@ public class ServerCP1 {
 
 	private static Cipher myPriEncryptCipher;
 	private static Cipher myPriDecryptCipher;
-
 	private static Cipher clientEncryptCipher;
 	private static Cipher clientDecryptCipher;
 
@@ -42,6 +40,9 @@ public class ServerCP1 {
 	private static Socket connectionSocket;
 	private static DataOutputStream toClient;
 	private static DataInputStream fromClient;
+
+	private static int serverPort = 4321;
+	private static byte[] nonce;
 
 	///////////////////////////////////////////////////////////////////////////
 	// setup & tear down methods
@@ -58,21 +59,21 @@ public class ServerCP1 {
 		LOGGER.setUseParentHandlers(false);
 	}
 
+	private static void initSocket() throws Exception {
+		initSocket(serverPort);
+	}
+
 	private static void initSocket(int port) throws Exception {
 		LOGGER.info("Set up Server Socket...");
 		welcomeSocket = new ServerSocket(port);
 		connectionSocket = welcomeSocket.accept();
 		toClient = new DataOutputStream(connectionSocket.getOutputStream());
 		fromClient = new DataInputStream(connectionSocket.getInputStream());
-		LOGGER.info("Serve Socket initialized!");
-	}
-
-	private static void initSocket() throws Exception {
-		initSocket(4321);
+		LOGGER.info("OK. Server Socket is initialized.");
 	}
 
 	private static void tearDownSocket() throws IOException {
-		LOGGER.info("Closing Serve Socket...");
+		LOGGER.info("Closing Server Socket...");
 		if (toClient != null)
 			toClient.close();
 		if (fromClient != null)
@@ -81,7 +82,7 @@ public class ServerCP1 {
 			connectionSocket.close();
 		if (welcomeSocket != null && !welcomeSocket.isClosed())
 			welcomeSocket.close();
-		LOGGER.info("Serve Socket closed!");
+		LOGGER.info("OK. Server Socket is closed.");
 	}
 
 	private static PrivateKey getPrivateKey(Path filepath) throws Exception {
@@ -212,6 +213,8 @@ public class ServerCP1 {
 		if (!Arrays.equals(computedDigest, digest)) {
 			LOGGER.severe("Inconsistent Digest");
 			throw new Exception("Inconsistent Digest");
+		} else {
+			LOGGER.fine("OK. Digest verified.");
 		}
 		return data;
 
@@ -231,26 +234,21 @@ public class ServerCP1 {
 	private static String receivePlainTextMessage() throws Exception {
 		byte[] bytesRecieved = receiveBytes();
 		String msg = new String(bytesRecieved, StandardCharsets.UTF_8);
-		LOGGER.fine("Received plain message: " + msg);
+		LOGGER.fine("Received plain message: '" + msg + "'");
 		return msg;
 	}
 
 	private static String receiveEncryptedTextMessage() throws Exception {
 		byte[] bytesRecieved = receiveEncryptedBytes();
 		String msg = new String(bytesRecieved, StandardCharsets.UTF_8);
-		LOGGER.fine("Received encrypted message: " + msg);
+		LOGGER.fine("Received encrypted message: '" + msg + "'");
 		return msg;
 	}
 
 	private static void saveFile(byte[] data, String name) throws IOException {
-
 		Path path = Paths.get(serverStoragePathStr + "/recv_" + name);
 		Files.write(path, data);
-		LOGGER.fine("File saved to: " + path.toString());
-		// FileOutputStream fileOutputStream = new FileOutputStream("recv_" + name);
-		// BufferedOutputStream bufferedFileOutputStream = new
-		// BufferedOutputStream(fileOutputStream);
-
+		LOGGER.info("OK. File saved to: " + path.toString());
 	}
 
 	///////////////////////////////////////////////////////////////////////////
@@ -296,6 +294,7 @@ public class ServerCP1 {
 					if (msgReceived.equals("Start Session")) {
 						LOGGER.fine("Received a request from client to start a session...");
 						sendEncryptedTextMessage("Session Started");
+						LOGGER.fine("OK.");
 					} else if (msgReceived.equals("Close Session")) {
 						LOGGER.fine("Received a request from client to close the session...");
 						tearDownSocket();
@@ -317,7 +316,7 @@ public class ServerCP1 {
 					// init client DECRYPT cipher using client's public key
 					clientDecryptCipher = Cipher.getInstance(Proto.cipherAsymmetricAlgo);
 					clientDecryptCipher.init(Cipher.DECRYPT_MODE, clientPublicKey);
-					LOGGER.info("Client's public key has been initialized.");
+					LOGGER.info("OK. Client's public key has been initialized.");
 				}
 
 				else if (packetType == Proto.pType.nonce) {
@@ -326,7 +325,7 @@ public class ServerCP1 {
 					byte[] decryptedBytes = decryptBytesWithMyPrivateKey(bytesRecieved);
 					byte[] decryptedNonce = decryptBytesWithClientPubKey(decryptedBytes);
 					if (Arrays.equals(decryptedNonce, nonce)) {
-						LOGGER.info("Nonce verified!");
+						LOGGER.info("OK. Nonce verified.");
 						sendEncryptedTextMessage("Ready");
 					} else {
 						// nonce does not match
@@ -345,7 +344,7 @@ public class ServerCP1 {
 					// expecting a filename
 					bytesRecieved = receiveEncryptedBytes();
 					String fileName = new String(bytesRecieved, StandardCharsets.UTF_8);
-					LOGGER.fine("Filename: " + fileName);
+					LOGGER.fine("OK. Filename: " + fileName);
 					// expecting the file content
 					packetType = fromClient.readInt();
 					bytesRecieved = receiveEncryptedBytes();

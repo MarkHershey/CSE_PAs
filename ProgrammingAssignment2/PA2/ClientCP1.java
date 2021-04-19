@@ -25,21 +25,23 @@ public class ClientCP1 {
 	private static PublicKey myPublicKey;
 	private static PrivateKey myPrivateKey;
 	private static Key sessionKey;
+
 	private static Cipher myPriEncryptCipher;
 	private static Cipher myPriDecryptCipher;
 	private static Cipher serverEncryptCipher;
 	private static Cipher serverDecryptCipher;
+
 	private static MessageDigest md;
 	private static Socket clientSocket;
 	private static DataOutputStream toServer;
 	private static DataInputStream fromServer;
 
+	private static String serverAddress = "localhost";
+	private static int serverPort = 4321;
+	private static String filename;
+
 	///////////////////////////////////////////////////////////////////////////
 	// setup & tear down methods
-
-	private static void initSocket() throws Exception {
-		initSocket("localhost", 4321);
-	}
 
 	private static void initSocket(String serverAddress, int port) throws Exception {
 		// Connect to server and get the input and output streams
@@ -160,14 +162,6 @@ public class ClientCP1 {
 		toServer.write(data); // payload
 	}
 
-	// private static void sendBytesWithDigest(int packetType, byte[] data) throws
-	// Exception {
-	// toServer.writeInt(packetType); // packetType: 4 bytes
-	// toServer.write(getSignedDigest(data)); // signed digest: 128 bytes
-	// toServer.writeInt(data.length); // paylaodSize: 4 bytes
-	// toServer.write(data); // payload
-	// }
-
 	private static void sendBytesWithProtection(int packetType, byte[] data) throws Exception {
 		toServer.writeInt(packetType); // packetType: 4 bytes
 		toServer.write(getSignedDigest(data)); // signed digest: 128 bytes
@@ -274,9 +268,29 @@ public class ClientCP1 {
 	///////////////////////////////////////////////////////////////////////////
 
 	public static void main(String[] args) {
+		// validate filename
+		if (args.length > 0) {
+			File file = new File(args[0]);
+			if (!file.exists()) {
+				file = new File("client_res/" + args[0]);
+				if (!file.exists()) {
+					System.out.println("File '" + args[0] + "' not found.");
+					return;
+				} else {
+					filename = "client_res/" + args[0];
+				}
+			} else {
+				filename = args[0];
+			}
+		}
+
 		// initialize socket connection and keys
 		try {
-			initSocket();
+			if (args.length > 1)
+				serverAddress = args[1];
+			if (args.length > 2)
+				serverPort = Integer.parseInt(args[2]);
+			initSocket(serverAddress, serverPort);
 			initMyKeys();
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -344,32 +358,36 @@ public class ClientCP1 {
 				return;
 			}
 
-			// 7.1 While-loop: Ask user input for file name or close session
-			Scanner myScanner = new Scanner(System.in);
-			while (true) {
-				System.out.println("\nEnter filename to send file (enter 'q' to quit):");
-				String usrInput = myScanner.nextLine();
+			if (filename == null) {
+				// 7.1 While-loop: Ask user input for file name or close session
+				Scanner myScanner = new Scanner(System.in);
+				while (true) {
+					System.out.println("\nEnter filename to send file (enter 'q' to quit):");
+					String usrInput = myScanner.nextLine();
 
-				if (usrInput.equals("q")) {
-					break;
-				}
-
-				File file = new File(usrInput);
-				if (!file.exists()) {
-					file = new File("client_res/" + usrInput);
-					if (!file.exists()) {
-						System.out.println("File not found.");
-						continue;
+					if (usrInput.equals("q")) {
+						break;
 					}
-				}
 
-				// 7.2. Send file
-				long fileTransferStarted = System.nanoTime();
-				sendFile(file.getPath());
-				long fileTransferTaken = System.nanoTime() - fileTransferStarted;
-				System.out.println("File transfer took: " + fileTransferTaken / 1000000.0 + "ms");
+					File file = new File(usrInput);
+					if (!file.exists()) {
+						file = new File("client_res/" + usrInput);
+						if (!file.exists()) {
+							System.out.println("File '" + usrInput + "' not found.");
+							continue;
+						}
+					}
+
+					// 7.2. Send file
+					long fileTransferStarted = System.nanoTime();
+					sendFile(file.getPath());
+					long fileTransferTaken = System.nanoTime() - fileTransferStarted;
+					System.out.println("File transfer took: " + fileTransferTaken / 1000000.0 + "ms");
+				}
+				myScanner.close();
+			} else {
+				sendFile(filename);
 			}
-			myScanner.close();
 
 			// 9. Tell server to close the session
 			System.out.println("Tell server to close the session...");
