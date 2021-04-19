@@ -9,25 +9,37 @@ import java.util.Base64;
 import java.util.HashMap;
 
 import javax.crypto.Cipher;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 
 public class Proto {
-    public static final int nonceLength = 64;
-    public static final int rsaKeyLength = 1024;
-    public static final int rsaEncryptionBatchLimit = rsaKeyLength / 8 - 11;
-    public static final int rsaDecryptionBatchLimit = rsaKeyLength / 8;
-    public static final int signedDigestLength = rsaKeyLength / 8;
+    public static final int nonceLength = 64; // unit: bytes
+    public static final int rsaKeyLength = 1024; // unit: bits
+    public static final int rsaEncryptionBatchLimit = rsaKeyLength / 8 - 11; // unit: bytes
+    public static final int rsaDecryptionBatchLimit = rsaKeyLength / 8; // unit: bytes
+
     public static final String keyGenAlgo = "RSA";
-    public static final String digestAlgo = "MD5";
-    public static final String certificateType = "X.509";
     public static final String cipherAsymmetricAlgo = "RSA/ECB/PKCS1Padding";
+
+    public static final String sessionKeyGenAlgo = "AES";
+    public static final int sessionKeySize = 256; // unit: bits
     public static final String cipherSymmetricAlgo = "AES/ECB/PKCS5Padding";
+
+    public static final String certificateType = "X.509";
     public static final String caCertificatePath = "ca_cert/cse_ca_cert.crt";
+
+    public static final String digestAlgo = "SHA-256";
+    public static int digestLength = 32; // unit: bytes
+    public static int signedDigestLength = rsaKeyLength / 8; // unit: bytes
 
     public static class pType {
         public static final int plainMsg = 0;
         public static final int encryptedMsg = 1;
         public static final int filename = 2;
         public static final int file = 3;
+        public static final int sEncryptedMsg = 11;
+        public static final int sFilename = 12;
+        public static final int sFile = 13;
         public static final int cert = 99;
         public static final int nonce = 98;
         public static final int pubKey = 97;
@@ -38,6 +50,9 @@ public class Proto {
                 put(1, "encryptedMsg");
                 put(2, "filename");
                 put(3, "file");
+                put(11, "sEncryptedMsg");
+                put(12, "sFilename");
+                put(13, "sFile");
                 put(99, "cert");
                 put(98, "nonce");
                 put(97, "pubKey");
@@ -103,6 +118,11 @@ public class Proto {
 
     public static PublicKey recoverPubKeyFromBytes(byte[] EncodedKey) throws Exception {
         PublicKey key = KeyFactory.getInstance(keyGenAlgo).generatePublic(new X509EncodedKeySpec(EncodedKey));
+        return key;
+    }
+
+    public static SecretKey recoverSecretKeyFromBytes(byte[] EncodedKey) throws Exception {
+        SecretKey key = new SecretKeySpec(EncodedKey, 0, EncodedKey.length, sessionKeyGenAlgo);
         return key;
     }
 

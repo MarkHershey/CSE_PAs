@@ -83,7 +83,7 @@ public class ClientCP1 {
 		myPriDecryptCipher = Cipher.getInstance(Proto.cipherAsymmetricAlgo);
 		myPriDecryptCipher.init(Cipher.DECRYPT_MODE, myPrivateKey);
 		// init my message digest hash function
-		ClientCP1.md = MessageDigest.getInstance(Proto.digestAlgo);
+		md = MessageDigest.getInstance(Proto.digestAlgo);
 	}
 
 	private static void initServerPublicKeyFromCertByte(byte[] certBytes) throws Exception {

@@ -17,3 +17,4 @@ target_main:
 
 clean:
 	$(REMOVE) *.class
+	$(REMOVE) server_storage/recv_*
