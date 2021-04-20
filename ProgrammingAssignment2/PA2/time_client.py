@@ -9,8 +9,8 @@ times = 20
 client = "ClientCP1"
 server = "ServerCP1"
 
-with open("time_"+client+".csv", "w") as outfile:
-    for size in range(step, step*(times+1), step):
+with open("stats/time_" + client + ".csv", "w") as outfile:
+    for size in range(step, step * (times + 1), step):
         print(size)
         with open("client_res/test.bin", "wb") as f:
             f.write(random.randbytes(size))
