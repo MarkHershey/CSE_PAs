@@ -10,9 +10,9 @@ Programming Assignment 2 for 50.005 Computer System Engineering at SUTD
 
 JDK (JRE + JVM) is required, following commands should be available at PATH:
 
--   `java`
--   `javac`
--   `make`
+- `java`
+- `javac`
+- `make`
 
 ## Compile the code
 
@@ -42,25 +42,25 @@ $ java ServerCP2
 
 Step 2: Client's Terminal Window:
 
--   Interactive mode (to send multiple files)
+- Interactive mode (to send multiple files)
 
-    ```bash
-    $ cd PA2
-    $ java ClientCP2
-    ```
+  ```bash
+  $ cd PA2
+  $ java ClientCP2
+  ```
 
--   Command line mode (to send a single file)
+- Command line mode (to send a single file)
 
-    ```bash
-    $ cd PA2
-    $ java ClientCP2 /path/to/your/file
-    ```
+  ```bash
+  $ cd PA2
+  $ java ClientCP2 /path/to/your/file
+  ```
 
 ## Specifications
 
--   Please checkout the [Report](Report.md) for implementation and performance details.
+- Please checkout the [Report](Report.md) for implementation and performance details.
 
 ## Collaborators
 
--   [Daniel Low @nexaitch](https://github.com/nexaitch)
--   [Huang He @MarkHershey](https://github.com/MarkHershey)
+- [Daniel Low @nexaitch](https://github.com/nexaitch)
+- [Huang He @MarkHershey](https://github.com/MarkHershey)

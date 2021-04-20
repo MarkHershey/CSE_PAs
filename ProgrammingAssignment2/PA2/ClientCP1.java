@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
-import java.security.Key;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.MessageDigest;
@@ -18,13 +17,14 @@ import java.security.cert.X509Certificate;
 import java.util.Arrays;
 import java.util.Scanner;
 import javax.crypto.Cipher;
+import javax.crypto.SecretKey;
 
 public class ClientCP1 {
 	private static PublicKey caPublicKey;
 	private static PublicKey serverPublicKey;
 	private static PublicKey myPublicKey;
 	private static PrivateKey myPrivateKey;
-	private static Key sessionKey;
+	private static SecretKey sessionKey;
 
 	private static Cipher myPriEncryptCipher;
 	private static Cipher myPriDecryptCipher;

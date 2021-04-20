@@ -1,7 +1,6 @@
-import time
-import subprocess
 import random
-import os
+import subprocess
+import time
 
 step = 1000000
 times = 20
