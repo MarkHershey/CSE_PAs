@@ -1,0 +1,43 @@
+#!/usr/bin/env python
+
+import os
+import shlex
+import subprocess
+import sys
+import time
+
+
+def demo(CP: int = 2):
+    if CP in (1, 2):
+        client_path = "ClientCP" + str(CP)
+    else:
+        return
+
+    cmd = f"make clean"
+    print(cmd)
+    subprocess.run(shlex.split(cmd), stdout=subprocess.DEVNULL)
+    cmd = f"make"
+    print(cmd)
+    subprocess.run(shlex.split(cmd), stdout=subprocess.DEVNULL)
+    print("\n")
+
+    for filename in os.listdir("client_res"):
+        if filename.endswith(".txt"):
+            continue
+
+        xbytes = os.stat("client_res/" + filename).st_size
+        xMB = round(xbytes / 1000000, 3)
+
+        cmd = f"java {client_path} '{filename}'"
+
+        print(cmd)
+        print("----------------------")
+        print(f"File size   : {xMB} MB")
+        started = time.time()
+        subprocess.run(shlex.split(cmd), stdout=subprocess.DEVNULL)
+        time_elapsed = time.time() - started
+        print(f"Time elapsed: {round(time_elapsed, 3)} seconds\n\n")
+
+
+if __name__ == "__main__":
+    demo(int(sys.argv[1]))
