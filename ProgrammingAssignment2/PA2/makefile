@@ -1,4 +1,4 @@
-REMOVE = rm
+REMOVE = rm -vf
 CC = javac
 
 
@@ -13,7 +13,6 @@ all: target_main
 
 target_main:
 	$(CC) *.java
-
 
 clean:
 	$(REMOVE) *.class

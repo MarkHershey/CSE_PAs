@@ -1,4 +1,4 @@
-# ProgrammingAssignment2
+# Programming Assignment 2: Secure File Transfer
 
 Programming Assignment 2 for 50.005 Computer System Engineering at SUTD
 
@@ -11,41 +11,19 @@ Programming Assignment 2 for 50.005 Computer System Engineering at SUTD
 
 -   The CA-signed certificate can assure the authenticity of the server, but, the server has no information about the client. So there is a lack of a client authentication process.
 -   If we assume the server knows the client's identity through some password login process, (which is ignored in this project), the server is still exposed to replay attack, which means that any third party client could replay the client's request/ packet to exploit the server's indiscriminative request handling. **We will solve this issue by introducing the server-generated one-time verification number (NONCE). NONCE is generated and used only once per handshake, the client is expected to sign the NONCE and send it back to the server for verification, by doing this, the server is able to verify the client is live and authenticated.**
--   Since the server's certificate is public, and the nonce is still potentially at risk of leaking to a third party, if the client only uses the server's public key for encryption, any third party could potentially pretend to be the client and send files to the server. **We will solve this issue by letting both client and the server exchange their public key securely, and any follow-up communication not only need to be encrypted using the receiver's public key, but the digest also needs to be signed by using its own private key. (CP1)**
+-   Since the server's certificate is public, and the nonce is still potentially at risk of leaking to a third party, if the client only uses the server's public key for encryption, any third party could potentially pretend to be the client and send files to the server. **We will solve this issue by letting both client and the server exchange their public key securely, and any follow-up communication not only need to be encrypted using the receiver's public key, but the digest also needs to be signed by using its own private key (CP1).**
 
 ## Protocol
 
-### CP1
+### CP1 (Asymmetric Encryption)
 
 ![](imgs/CP1.png)
 
-### CP2
+### CP2 (Symmetric Session Key Encryption)
 
 ![](imgs/CP2.png)
 
-## Time taken
-
-### CP1
-
-![](imgs/plot_CP1.png)
-
-Coefficient = 2.89e-6 s/byte (0.35MB/s)
-
-Intercept = 1.30 s
-
-R^2 = 0.984
-
-### CP2
-
-![](imgs/plot_CP1.png)
-
-Coefficient = 2.59e-8 s/byte (38MB/s)
-
-Intercept = 1.06 s
-
-R^2 = 0.829
-
-## Packet Type
+### Packet Type
 
 | packetType (`int`) | Ref Name        | Payload Description              |
 | :----------------: | :-------------- | :------------------------------- |
@@ -61,7 +39,7 @@ R^2 = 0.829
 |        `97`        | `pubKey`        | public key                       |
 |        `96`        | `sessionKey`    | encrypted session key            |
 
-## Packet Schema
+### Packet Schema
 
 Use public key encryption
 
@@ -77,4 +55,26 @@ Use session key encryption
 
 ## Performance statistics
 
--   TODO
+### CP1 (Asymmetric Encryption)
+
+```
+Coefficient = 2.89e-6 seconds/byte (0.35 MB/s)
+
+Intercept = 1.30 s
+
+R^2 = 0.984
+```
+
+![](imgs/plot_CP1.png)
+
+### CP2 (Symmetric Session Key Encryption)
+
+```
+Coefficient = 2.59e-8 seconds/byte (**38 MB/s**)
+
+Intercept = 1.06 s
+
+R^2 = 0.829
+```
+
+![](imgs/plot_CP2.png)

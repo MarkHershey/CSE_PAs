@@ -142,4 +142,9 @@ public class Proto {
         return concatBytes(batchedData);
     }
 
+    public static String getPid() {
+        long pid = ProcessHandle.current().pid();
+        return String.valueOf(pid);
+    }
+
 }

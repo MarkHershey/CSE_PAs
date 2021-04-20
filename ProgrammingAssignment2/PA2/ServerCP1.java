@@ -41,7 +41,7 @@ public class ServerCP1 {
 	private static DataOutputStream toClient;
 	private static DataInputStream fromClient;
 
-	private static int serverPort = 4321;
+	private static final int serverPort = 4321;
 	private static byte[] nonce;
 
 	///////////////////////////////////////////////////////////////////////////
@@ -66,14 +66,31 @@ public class ServerCP1 {
 	private static void initSocket(int port) throws Exception {
 		LOGGER.info("Set up Server Socket...");
 		welcomeSocket = new ServerSocket(port);
+		LOGGER.info("OK. Server Socket is created.\n");
 	}
 
-    private static void acceptClient() throws Exception {
-	connectionSocket = welcomeSocket.accept();
-	toClient = new DataOutputStream(connectionSocket.getOutputStream());
-	fromClient = new DataInputStream(connectionSocket.getInputStream());
-	LOGGER.info("OK. Server Socket is initialized.");
-    }
+	private static void acceptClient() throws Exception {
+		connectionSocket = welcomeSocket.accept();
+		toClient = new DataOutputStream(connectionSocket.getOutputStream());
+		fromClient = new DataInputStream(connectionSocket.getInputStream());
+		LOGGER.info("OK. Client Connection Socket is initialized.");
+	}
+
+	private static void closeClientConnection() throws Exception {
+		if (toClient != null) {
+			toClient.close();
+			toClient = null;
+		}
+		if (fromClient != null) {
+			fromClient.close();
+			fromClient = null;
+		}
+		if (connectionSocket != null && !connectionSocket.isClosed()) {
+			connectionSocket.close();
+			connectionSocket = null;
+		}
+		LOGGER.info("OK. Client Connection is closed.\n");
+	}
 
 	private static void tearDownSocket() throws IOException {
 		LOGGER.info("Closing Server Socket...");
@@ -87,11 +104,6 @@ public class ServerCP1 {
 			welcomeSocket.close();
 		LOGGER.info("OK. Server Socket is closed.");
 	}
-
-    private static void closeClientConnection() throws IOException {
-	if (connectionSocket != null && !connectionSocket.isClosed())
-	    connectionSocket.close();
-    }
 
 	private static PrivateKey getPrivateKey(Path filepath) throws Exception {
 
@@ -263,106 +275,108 @@ public class ServerCP1 {
 
 	public static void main(String[] args) {
 		initLogger(Level.ALL);
+		LOGGER.config("PID : " + Proto.getPid());
+		LOGGER.config("Port: " + String.valueOf(serverPort));
 
 		try {
 			initSocket();
 			initMyKeys();
-			while (true){
-			    acceptClient();
-			while (!connectionSocket.isClosed()) {
+			while (true) {
+				acceptClient();
+				while (!connectionSocket.isClosed()) {
 
-				if (Thread.currentThread().isInterrupted()) {
-					tearDownSocket();
-					break;
-				}
-
-				byte[] bytesRecieved;
-				int packetType = fromClient.readInt();
-
-				if (packetType == Proto.pType.plainMsg) {
-					String msgReceived = receivePlainTextMessage();
-					if (msgReceived.equals("Hi")) {
-						// send server's certificate
-						byte[] server_cert = Files.readAllBytes(serverCertPath);
-						LOGGER.fine("Sending certificate...");
-						sendBytes(Proto.pType.cert, server_cert);
-						// Generate nonce
-						SecureRandom random = new SecureRandom();
-						nonce = new byte[Proto.nonceLength];
-						random.nextBytes(nonce);
-						LOGGER.fine("Generated nonce: " + Proto.bytesToString(nonce));
-						// sign nonce
-						byte[] signedNonce = signBytesWithMyPrivateKey(nonce);
-						// send signed nonce
-						LOGGER.fine("Sending signed nonce...");
-						sendBytes(Proto.pType.nonce, signedNonce);
-
-					}
-				} else if (packetType == Proto.pType.encryptedMsg) {
-					String msgReceived = receiveEncryptedTextMessage();
-					if (msgReceived.equals("Start Session")) {
-						LOGGER.fine("Received a request from client to start a session...");
-						sendEncryptedTextMessage("Session Started");
-						LOGGER.fine("OK.");
-					} else if (msgReceived.equals("Close Session")) {
-						LOGGER.fine("Received a request from client to close the session...");
-						closeClientConnection();
+					if (Thread.currentThread().isInterrupted()) {
+						tearDownSocket();
 						break;
 					}
-				}
 
-				else if (packetType == Proto.pType.pubKey) {
-					LOGGER.fine("Receiving public key from client...");
-					// Receiving a public key
-					bytesRecieved = receiveBytes();
-					byte[] decryptedBytes = decryptBytesWithMyPrivateKey(bytesRecieved);
-					// init client public key
-					clientPublicKey = Proto.recoverPubKeyFromBytes(decryptedBytes);
-					LOGGER.fine("clientPublicKey: " + Proto.bytesToString(decryptedBytes));
-					// init client ENCRYPT cipher using client's public key
-					clientEncryptCipher = Cipher.getInstance(Proto.cipherAsymmetricAlgo);
-					clientEncryptCipher.init(Cipher.ENCRYPT_MODE, clientPublicKey);
-					// init client DECRYPT cipher using client's public key
-					clientDecryptCipher = Cipher.getInstance(Proto.cipherAsymmetricAlgo);
-					clientDecryptCipher.init(Cipher.DECRYPT_MODE, clientPublicKey);
-					LOGGER.info("OK. Client's public key has been initialized.");
-				}
+					byte[] bytesRecieved;
+					int packetType = fromClient.readInt();
 
-				else if (packetType == Proto.pType.nonce) {
-					LOGGER.fine("Verifying nonce...");
-					bytesRecieved = receiveBytes();
-					byte[] decryptedBytes = decryptBytesWithMyPrivateKey(bytesRecieved);
-					byte[] decryptedNonce = decryptBytesWithClientPubKey(decryptedBytes);
-					if (Arrays.equals(decryptedNonce, nonce)) {
-						LOGGER.info("OK. Nonce verified.");
-						sendEncryptedTextMessage("Ready");
-					} else {
-						// nonce does not match
-						LOGGER.fine("DEBUG: Illegal nonce: " + Proto.bytesToString(decryptedNonce));
-						LOGGER.fine("DEBUG: Actual nonce : " + Proto.bytesToString(nonce));
-						// terminate communication
-						sendEncryptedTextMessage("Failed");
-						LOGGER.severe("Terminating session due to nonce mismatch...");
-						closeClientConnection();
-						break;
+					if (packetType == Proto.pType.plainMsg) {
+						String msgReceived = receivePlainTextMessage();
+						if (msgReceived.equals("Hi")) {
+							// send server's certificate
+							byte[] server_cert = Files.readAllBytes(serverCertPath);
+							LOGGER.fine("Sending certificate...");
+							sendBytes(Proto.pType.cert, server_cert);
+							// Generate nonce
+							SecureRandom random = new SecureRandom();
+							nonce = new byte[Proto.nonceLength];
+							random.nextBytes(nonce);
+							LOGGER.fine("Generated nonce: " + Proto.bytesToString(nonce));
+							// sign nonce
+							byte[] signedNonce = signBytesWithMyPrivateKey(nonce);
+							// send signed nonce
+							LOGGER.fine("Sending signed nonce...");
+							sendBytes(Proto.pType.nonce, signedNonce);
+
+						}
+					} else if (packetType == Proto.pType.encryptedMsg) {
+						String msgReceived = receiveEncryptedTextMessage();
+						if (msgReceived.equals("Start Session")) {
+							LOGGER.fine("Received a request from client to start a session...");
+							sendEncryptedTextMessage("Session Started");
+							LOGGER.fine("OK.");
+						} else if (msgReceived.equals("Close Session")) {
+							LOGGER.fine("Received a request from client to close the session...");
+							closeClientConnection();
+							break;
+						}
 					}
-				}
 
-				else if (packetType == Proto.pType.filename) {
-					LOGGER.fine("Receiving a file...");
-					// expecting a filename
-					bytesRecieved = receiveEncryptedBytes();
-					String fileName = new String(bytesRecieved, StandardCharsets.UTF_8);
-					LOGGER.fine("OK. Filename: " + fileName);
-					// expecting the file content
-					packetType = fromClient.readInt();
-					bytesRecieved = receiveEncryptedBytes();
-					saveFile(bytesRecieved, fileName);
-					// send confirmation
-					sendEncryptedTextMessage("File Received");
-				}
+					else if (packetType == Proto.pType.pubKey) {
+						LOGGER.fine("Receiving public key from client...");
+						// Receiving a public key
+						bytesRecieved = receiveBytes();
+						byte[] decryptedBytes = decryptBytesWithMyPrivateKey(bytesRecieved);
+						// init client public key
+						clientPublicKey = Proto.recoverPubKeyFromBytes(decryptedBytes);
+						LOGGER.fine("clientPublicKey: " + Proto.bytesToString(decryptedBytes));
+						// init client ENCRYPT cipher using client's public key
+						clientEncryptCipher = Cipher.getInstance(Proto.cipherAsymmetricAlgo);
+						clientEncryptCipher.init(Cipher.ENCRYPT_MODE, clientPublicKey);
+						// init client DECRYPT cipher using client's public key
+						clientDecryptCipher = Cipher.getInstance(Proto.cipherAsymmetricAlgo);
+						clientDecryptCipher.init(Cipher.DECRYPT_MODE, clientPublicKey);
+						LOGGER.info("OK. Client's public key has been initialized.");
+					}
 
-			}
+					else if (packetType == Proto.pType.nonce) {
+						LOGGER.fine("Verifying nonce...");
+						bytesRecieved = receiveBytes();
+						byte[] decryptedBytes = decryptBytesWithMyPrivateKey(bytesRecieved);
+						byte[] decryptedNonce = decryptBytesWithClientPubKey(decryptedBytes);
+						if (Arrays.equals(decryptedNonce, nonce)) {
+							LOGGER.info("OK. Nonce verified.");
+							sendEncryptedTextMessage("Ready");
+						} else {
+							// nonce does not match
+							LOGGER.fine("DEBUG: Illegal nonce: " + Proto.bytesToString(decryptedNonce));
+							LOGGER.fine("DEBUG: Actual nonce : " + Proto.bytesToString(nonce));
+							// terminate communication
+							sendEncryptedTextMessage("Failed");
+							LOGGER.severe("Terminating session due to nonce mismatch...");
+							closeClientConnection();
+							break;
+						}
+					}
+
+					else if (packetType == Proto.pType.filename) {
+						LOGGER.fine("Receiving a file...");
+						// expecting a filename
+						bytesRecieved = receiveEncryptedBytes();
+						String fileName = new String(bytesRecieved, StandardCharsets.UTF_8);
+						LOGGER.fine("OK. Filename: " + fileName);
+						// expecting the file content
+						packetType = fromClient.readInt();
+						bytesRecieved = receiveEncryptedBytes();
+						saveFile(bytesRecieved, fileName);
+						// send confirmation
+						sendEncryptedTextMessage("File Received");
+					}
+
+				}
 			}
 		} catch (Exception e) {
 			LOGGER.log(Level.SEVERE, e.getMessage(), e);
