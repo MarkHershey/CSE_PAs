@@ -23,6 +23,28 @@ Programming Assignment 2 for 50.005 Computer System Engineering at SUTD
 
 ![](imgs/CP2.png)
 
+## Time taken
+
+### CP1
+
+![](imgs/plot_CP1.png)
+
+Coefficient = 2.89e-6 s/byte (0.35MB/s)
+
+Intercept = 1.30 s
+
+R^2 = 0.984
+
+### CP2
+
+![](imgs/plot_CP1.png)
+
+Coefficient = 2.59e-8 s/byte (38MB/s)
+
+Intercept = 1.06 s
+
+R^2 = 0.829
+
 ## Packet Type
 
 | packetType (`int`) | Ref Name        | Payload Description              |

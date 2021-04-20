@@ -66,11 +66,14 @@ public class ServerCP1 {
 	private static void initSocket(int port) throws Exception {
 		LOGGER.info("Set up Server Socket...");
 		welcomeSocket = new ServerSocket(port);
-		connectionSocket = welcomeSocket.accept();
-		toClient = new DataOutputStream(connectionSocket.getOutputStream());
-		fromClient = new DataInputStream(connectionSocket.getInputStream());
-		LOGGER.info("OK. Server Socket is initialized.");
 	}
+
+    private static void acceptClient() throws Exception {
+	connectionSocket = welcomeSocket.accept();
+	toClient = new DataOutputStream(connectionSocket.getOutputStream());
+	fromClient = new DataInputStream(connectionSocket.getInputStream());
+	LOGGER.info("OK. Server Socket is initialized.");
+    }
 
 	private static void tearDownSocket() throws IOException {
 		LOGGER.info("Closing Server Socket...");
@@ -84,6 +87,11 @@ public class ServerCP1 {
 			welcomeSocket.close();
 		LOGGER.info("OK. Server Socket is closed.");
 	}
+
+    private static void closeClientConnection() throws IOException {
+	if (connectionSocket != null && !connectionSocket.isClosed())
+	    connectionSocket.close();
+    }
 
 	private static PrivateKey getPrivateKey(Path filepath) throws Exception {
 
@@ -259,7 +267,8 @@ public class ServerCP1 {
 		try {
 			initSocket();
 			initMyKeys();
-
+			while (true){
+			    acceptClient();
 			while (!connectionSocket.isClosed()) {
 
 				if (Thread.currentThread().isInterrupted()) {
@@ -297,7 +306,7 @@ public class ServerCP1 {
 						LOGGER.fine("OK.");
 					} else if (msgReceived.equals("Close Session")) {
 						LOGGER.fine("Received a request from client to close the session...");
-						tearDownSocket();
+						closeClientConnection();
 						break;
 					}
 				}
@@ -334,7 +343,7 @@ public class ServerCP1 {
 						// terminate communication
 						sendEncryptedTextMessage("Failed");
 						LOGGER.severe("Terminating session due to nonce mismatch...");
-						tearDownSocket();
+						closeClientConnection();
 						break;
 					}
 				}
@@ -354,7 +363,7 @@ public class ServerCP1 {
 				}
 
 			}
-
+			}
 		} catch (Exception e) {
 			LOGGER.log(Level.SEVERE, e.getMessage(), e);
 			e.printStackTrace();
