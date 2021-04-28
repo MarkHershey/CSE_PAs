@@ -12,8 +12,8 @@ CC = javac
 all: target_main
 
 target_main:
-	$(CC) *.java
+    $(CC) *.java
 
 clean:
-	$(REMOVE) *.class
-	$(REMOVE) server_storage/recv_*
+    $(REMOVE) *.class
+    $(REMOVE) server_storage/recv_*
